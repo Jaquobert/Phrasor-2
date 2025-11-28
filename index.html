@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phrasor V1</title>
+  <style>
+    :root {
+      --matrix-green: #39ff14;
+      --matrix-glow: rgba(57, 255, 20, 0.35);
+      --dark-bg: #050505;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background: #0d0d0d;
+      color: #d0f6f0;
+      font-family: "Share Tech Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      position: relative;
+    }
+
+    /* Palette */
+    .palette {
+      background: #000;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      z-index: 2;
+    }
+
+    .palette h1 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--matrix-green);
+      letter-spacing: 0.1em;
+    }
+
+    .palette-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .palette .brick {
+      background: rgba(57, 255, 20, 0.12);
+      color: var(--matrix-green);
+      border: 1px solid var(--matrix-glow);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .palette .brick:active {
+      cursor: grabbing;
+      transform: scale(1.02);
+      box-shadow: 0 0 12px var(--matrix-glow);
+    }
+
+    .literal-form {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-left: auto;
+      flex-wrap: wrap;
+    }
+
+    .literal-form input {
+      background: #0f0f0f;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e8ffef;
+      padding: 8px 10px;
+      border-radius: 6px;
+      min-width: 140px;
+    }
+
+    .literal-form button {
+      background: var(--matrix-green);
+      color: #020202;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 0 12px var(--matrix-glow);
+    }
+
+    /* Help */
+    .help-button {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--matrix-green);
+      border: 1px solid var(--matrix-glow);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+      user-select: none;
+      z-index: 3;
+    }
+
+    .help-button:hover {
+      background: rgba(255, 255, 255, 0.14);
+      transform: scale(1.05);
+    }
+
+    .help-panel {
+      position: absolute;
+      top: 56px;
+      right: 12px;
+      background: #0f0f0f;
+      color: #d6ffd0;
+      border: 1px solid var(--matrix-glow);
+      border-radius: 10px;
+      padding: 16px;
+      width: min(420px, 90vw);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 10;
+      display: none;
+    }
+
+    .help-panel h3 {
+      margin: 0 0 8px;
+      color: var(--matrix-green);
+      font-weight: 600;
+    }
+
+    .help-panel ul {
+      padding-left: 18px;
+      margin: 8px 0;
+    }
+
+    /* Logic zone */
+    .logic-area {
+      flex: 1;
+      min-height: 35vh;
+      background: var(--dark-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .formula-viewport {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 28px;
+      overflow-x: auto;
+    }
+
+    .formula-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      min-height: 72px;
+      width: max-content;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .token {
+      position: relative;
+      background: rgba(57, 255, 20, 0.15);
+      color: var(--matrix-green);
+      border: 1px solid var(--matrix-glow);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: clamp(20px, 3vw, 36px);
+      letter-spacing: 0.08em;
+      box-shadow: 0 0 14px rgba(57, 255, 20, 0.15);
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    .token.literal {
+      color: #e8ffef;
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
+    }
+
+    .token:active {
+      cursor: grabbing;
+      transform: scale(1.03);
+      box-shadow: 0 0 18px var(--matrix-glow);
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+    }
+
+    .token:hover .delete-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drop-marker {
+      width: 8px;
+      height: 60px;
+      background: var(--matrix-green);
+      border-radius: 4px;
+      box-shadow: 0 0 12px var(--matrix-glow);
+      opacity: 0.8;
+    }
+
+    /* Natural zone */
+    .natural {
+      background: #fff;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-family: "Georgia", "Times New Roman", serif;
+      font-size: clamp(28px, 5vw, 52px);
+      padding: 40px;
+      box-sizing: border-box;
+      user-select: none;
+      overflow-wrap: anywhere;
+      min-height: 28vh;
+    }
+
+    .phrase {
+      line-height: 1.4;
+      transition: color 0.2s ease;
+    }
+
+    .word {
+      cursor: ns-resize;
+      transition: color 0.2s ease, background 0.2s ease;
+      padding: 2px 4px;
+      border-radius: 4px;
+      white-space: pre;
+      display: inline-block;
+      touch-action: none;
+    }
+
+    .word:active {
+      background: #eef;
+    }
+  </style>
+</head>
+<body>
+  <button class="help-button" aria-label="Afficher les règles">?</button>
+  <div class="help-panel" role="dialog" aria-label="Règles du jeu">
+    <h3>Règles du Phrasor</h3>
+    <p>Glisse les briques vertes depuis la palette vers la ligne centrale pour construire ta formule. Fais-les glisser pour les réordonner ou clique sur × pour supprimer.</p>
+    <ul>
+      <li><strong>D</strong> : Déterminant</li>
+      <li><strong>N</strong> : Nom</li>
+      <li><strong>V</strong> : Verbe</li>
+      <li><strong>Adj</strong> : Adjectif</li>
+      <li><strong>Adv</strong> : Adverbe</li>
+      <li><strong>Prep</strong> : Préposition</li>
+      <li><strong>C</strong> : Connecteur</li>
+      <li><strong>Rel</strong> : Relatif / pronom</li>
+      <li><strong>X</strong> : Néologisme</li>
+      <li><em>Littéral</em> : ajoute ton propre texte via le champ gris.</li>
+    </ul>
+    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Double-clique pour muter au hasard. La ponctuation se colle automatiquement au mot précédent.</p>
+  </div>
+
+  <div class="palette" aria-label="Palette de briques">
+    <div class="palette-buttons">
+      <div class="brick" draggable="true" data-symbol="D">D</div>
+      <div class="brick" draggable="true" data-symbol="N">N</div>
+      <div class="brick" draggable="true" data-symbol="V">V</div>
+      <div class="brick" draggable="true" data-symbol="Adj">Adj</div>
+      <div class="brick" draggable="true" data-symbol="Adv">Adv</div>
+      <div class="brick" draggable="true" data-symbol="Prep">Prep</div>
+      <div class="brick" draggable="true" data-symbol="C">C</div>
+      <div class="brick" draggable="true" data-symbol="Rel">Rel</div>
+      <div class="brick" draggable="true" data-symbol="X">X</div>
+    </div>
+    <form class="literal-form" aria-label="Ajout de texte littéral">
+      <input type="text" name="literal" placeholder="Texte littéral" aria-label="Texte littéral" />
+      <button type="submit">+ literal</button>
+    </form>
+  </div>
+
+  <div class="logic-area" aria-label="Zone de formule">
+    <div class="formula-viewport">
+      <div class="formula-row" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="natural" aria-live="polite">
+    <div class="phrase"></div>
+  </div>
+
+  <script>
+    const banks = {
+      D: ["le", "la", "les", "un", "une", "ce", "cette", "cet", "mon", "ton", "son", "notre", "votre", "quelque", "chaque", "aucun", "tout", "nul", "quel", "leur", "ses", "vos", "ces"],
+      N: ["feu", "monde", "machine", "corps", "temps", "regard", "silence", "nuit", "lumière", "matière", "système", "souffle", "spirale", "signal", "verre", "tempête", "horizon", "circuit", "réseau", "pulsar", "cendres", "oracle", "prisme", "jardin", "voûte", "algorithme", "éclipse", "boussole", "quartz"],
+      V: ["brûle", "traverse", "éclaire", "calcule", "observe", "persiste", "glisse", "tombe", "résonne", "attend", "transforme", "chuchote", "s'enroule", "palpite", "s'éteint", "s'ouvre", "frissonne", "rebondit", "fusionne", "dérive", "s'embrase", "vacille", "respire", "surgit", "amorce", "relie", "module", "convoque", "projette"],
+      Adj: ["fragile", "lent", "sacré", "instable", "froid", "lumineux", "secret", "dense", "immobile", "profond", "souterrain", "vif", "étrange", "liquide", "métallique", "occulte", "poreux", "serein", "tremblant", "minuscule", "solaire", "nocturne", "oblique", "rétro", "vaporeux"],
+      Adv: ["lentement", "brutalement", "silencieusement", "soudainement", "éternellement", "presque", "parfois", "rarement", "exactement", "simplement", "doucement", "ailleurs", "davantage", "toujours", "brièvement", "intimement"],
+      Prep: ["dans", "sur", "sous", "avec", "contre", "entre", "parmi", "vers", "auprès de", "au-dessus de", "au-dessous de", "près de", "au-delà de", "face à", "le long de"],
+      C: ["et", "mais", "donc", "car", "pourtant", "ou", "tandis que", "alors", "cependant", "ainsi", "puis", "ensuite", "or", "pour finir"],
+      Rel: ["qui", "que", "dont", "où", "lequel", "laquelle", "lesquels", "lesquelles", "auquel", "duquel"],
+      X: ["fluxonde", "cryostelle", "mégaonde", "lumicore", "nébulex", "quantorme", "morphose", "giganœud", "aéromesh", "chromaïde", "métatrame", "synaplex", "ultravaste", "pulséide", "oniricube", "tachyonite", "orbisphère", "noéticule"]
+    };
+
+    const symbolKeys = Object.keys(banks);
+    const punctuationStickLeft = /^[,.;:!?]/;
+
+    const formulaRow = document.querySelector('.formula-row');
+    const phraseContainer = document.querySelector('.phrase');
+    const paletteButtons = document.querySelectorAll('.palette .brick');
+    const literalForm = document.querySelector('.literal-form');
+    const helpButton = document.querySelector('.help-button');
+    const helpPanel = document.querySelector('.help-panel');
+
+    let logicTokens = [];
+    let tokenIdCounter = 0;
+    let currentDrag = null;
+    let dropMarker = null;
+
+    const initialFormula = "D N V Adv , C D N Adj V !";
+
+    function createToken(value, type) {
+      const tokenType = type || (symbolKeys.includes(value) ? 'symbol' : 'literal');
+      const token = { id: tokenIdCounter++, type: tokenType, value };
+      if (tokenType === 'symbol') {
+        token.wordIndex = randomIndex(value);
+      }
+      return token;
+    }
+
+    function randomIndex(symbol) {
+      const bank = banks[symbol];
+      return Math.floor(Math.random() * bank.length);
+    }
+
+    function buildInitialTokens() {
+      const parts = initialFormula.trim().split(/\s+/);
+      logicTokens = parts.map(part => createToken(part));
+    }
+
+    function removeToken(id) {
+      const idx = logicTokens.findIndex(t => t.id === id);
+      if (idx !== -1) {
+        logicTokens.splice(idx, 1);
+      }
+    }
+
+    function ensureWordIndex(token) {
+      if (token.wordIndex === undefined || token.wordIndex === null) {
+        token.wordIndex = randomIndex(token.value);
+      }
+      const bank = banks[token.value];
+      token.wordIndex = ((token.wordIndex % bank.length) + bank.length) % bank.length;
+      return token.wordIndex;
+    }
+
+    function adjustTokenIndex(token, delta) {
+      const bank = banks[token.value];
+      token.wordIndex = ((token.wordIndex + delta) % bank.length + bank.length) % bank.length;
+    }
+
+    function randomizeTokenWord(token) {
+      token.wordIndex = randomIndex(token.value);
+    }
+
+    function addInteractions(span, token) {
+      let lastY = null;
+      let moved = false;
+      let skipTap = false;
+
+      span.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        adjustTokenIndex(token, direction);
+        updateSpanFromToken(span, token);
+      });
+
+      span.addEventListener('pointerdown', (event) => {
+        span.setPointerCapture(event.pointerId);
+        lastY = event.clientY;
+        moved = false;
+      });
+
+      span.addEventListener('pointermove', (event) => {
+        if (lastY === null) return;
+        const deltaY = event.clientY - lastY;
+        const threshold = 10;
+        if (Math.abs(deltaY) >= threshold) {
+          const steps = Math.trunc(deltaY / threshold);
+          adjustTokenIndex(token, -steps);
+          updateSpanFromToken(span, token);
+          lastY = event.clientY;
+          moved = true;
+        }
+      });
+
+      span.addEventListener('pointerup', (event) => {
+        span.releasePointerCapture(event.pointerId);
+        if (!moved && !skipTap) {
+          adjustTokenIndex(token, 1);
+          updateSpanFromToken(span, token);
+        }
+        lastY = null;
+        skipTap = false;
+      });
+
+      span.addEventListener('pointercancel', () => {
+        lastY = null;
+      });
+
+      span.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        skipTap = true;
+        randomizeTokenWord(token);
+        updateSpanFromToken(span, token);
+      });
+    }
+
+    function updateSpanFromToken(span, token) {
+      const bank = banks[token.value];
+      const idx = ensureWordIndex(token);
+      span.dataset.index = String(idx);
+      span.textContent = bank[idx];
+    }
+
+    function renderPhrase() {
+      phraseContainer.innerHTML = '';
+
+      logicTokens.forEach((token, idx) => {
+        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.type === 'literal' && punctuationStickLeft.test(token.value));
+        if (shouldAddSpace) {
+          phraseContainer.appendChild(document.createTextNode(' '));
+        }
+
+        if (token.type === 'symbol') {
+          const span = document.createElement('span');
+          span.className = 'word';
+          span.dataset.symbol = token.value;
+          span.dataset.tokenId = String(token.id);
+          updateSpanFromToken(span, token);
+          addInteractions(span, token);
+          phraseContainer.appendChild(span);
+        } else {
+          const text = document.createElement('span');
+          text.textContent = token.value;
+          phraseContainer.appendChild(text);
+        }
+      });
+    }
+
+    function renderLogic() {
+      formulaRow.innerHTML = '';
+
+      logicTokens.forEach((token) => {
+        const brick = document.createElement('div');
+        brick.className = `token ${token.type === 'literal' ? 'literal' : 'symbol'}`;
+        brick.draggable = true;
+        brick.dataset.id = token.id;
+        brick.textContent = token.value;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = '×';
+        deleteBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          removeToken(token.id);
+          renderLogic();
+          renderPhrase();
+        });
+
+        brick.appendChild(deleteBtn);
+
+        brick.addEventListener('dragstart', (event) => {
+          currentDrag = { type: 'token', id: token.id };
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', 'token');
+        });
+
+        brick.addEventListener('dragend', clearMarker);
+
+        formulaRow.appendChild(brick);
+      });
+    }
+
+    function clearMarker() {
+      if (dropMarker && dropMarker.parentElement) {
+        dropMarker.parentElement.removeChild(dropMarker);
+      }
+      dropMarker = null;
+    }
+
+    function getDropIndex(event) {
+      const children = Array.from(formulaRow.children).filter((el) => el !== dropMarker);
+      const x = event.clientX;
+      for (let i = 0; i < children.length; i += 1) {
+        const rect = children[i].getBoundingClientRect();
+        if (x < rect.left + rect.width / 2) {
+          return i;
+        }
+      }
+      return children.length;
+    }
+
+    function placeMarker(index) {
+      if (!dropMarker) {
+        dropMarker = document.createElement('div');
+        dropMarker.className = 'drop-marker';
+      }
+      clearMarker();
+      const children = Array.from(formulaRow.children);
+      if (index >= children.length) {
+        formulaRow.appendChild(dropMarker);
+      } else {
+        formulaRow.insertBefore(dropMarker, children[index]);
+      }
+    }
+
+    function handlePaletteDragStart(event) {
+      const value = event.currentTarget.dataset.symbol;
+      currentDrag = { type: 'palette', value };
+      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData('text/plain', value);
+    }
+
+    paletteButtons.forEach((btn) => {
+      btn.addEventListener('dragstart', handlePaletteDragStart);
+      btn.addEventListener('dragend', clearMarker);
+    });
+
+    formulaRow.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      const index = getDropIndex(event);
+      placeMarker(index);
+    });
+
+    formulaRow.addEventListener('dragleave', (event) => {
+      if (!formulaRow.contains(event.relatedTarget)) {
+        clearMarker();
+      }
+    });
+
+    formulaRow.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const index = getDropIndex(event);
+
+      if (currentDrag?.type === 'palette') {
+        const token = createToken(currentDrag.value, 'symbol');
+        logicTokens.splice(index, 0, token);
+      } else if (currentDrag?.type === 'token') {
+        const fromIdx = logicTokens.findIndex(t => t.id === currentDrag.id);
+        if (fromIdx !== -1) {
+          const [moved] = logicTokens.splice(fromIdx, 1);
+          const targetIndex = fromIdx < index ? index - 1 : index;
+          logicTokens.splice(targetIndex, 0, moved);
+        }
+      }
+
+      clearMarker();
+      currentDrag = null;
+      renderLogic();
+      renderPhrase();
+    });
+
+    literalForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = literalForm.literal;
+      const value = input.value;
+      if (!value) return;
+      const token = createToken(value, 'literal');
+      logicTokens.push(token);
+      input.value = '';
+      renderLogic();
+      renderPhrase();
+    });
+
+    helpButton.addEventListener('click', () => {
+      const isOpen = helpPanel.style.display === 'block';
+      helpPanel.style.display = isOpen ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!helpPanel.contains(event.target) && event.target !== helpButton) {
+        helpPanel.style.display = 'none';
+      }
+    });
+
+    buildInitialTokens();
+    renderLogic();
+    renderPhrase();
+  </script>
+</body>
+</html>
