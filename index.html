@@ -17,23 +17,24 @@
 
     body {
       margin: 0;
-      display: flex;
-      flex-direction: column;
       min-height: 100vh;
       background: #0d0d0d;
       color: #d0f6f0;
       font-family: "Share Tech Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
       position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr 1fr;
     }
 
     /* Palette */
     .palette {
       background: #000;
-      padding: 12px 20px;
+      padding: 14px 24px;
       display: flex;
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
+      justify-content: center;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
       z-index: 2;
@@ -44,6 +45,14 @@
       font-size: 18px;
       color: var(--matrix-green);
       letter-spacing: 0.1em;
+    }
+
+    .palette-tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     .palette-buttons {
@@ -74,7 +83,6 @@
       display: flex;
       gap: 6px;
       align-items: center;
-      margin-left: auto;
       flex-wrap: wrap;
     }
 
@@ -154,8 +162,7 @@
 
     /* Logic zone */
     .logic-area {
-      flex: 1;
-      min-height: 35vh;
+      height: 100%;
       background: var(--dark-bg);
       display: flex;
       align-items: center;
@@ -168,6 +175,7 @@
 
     .formula-viewport {
       width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -198,7 +206,11 @@
       box-shadow: 0 0 14px rgba(57, 255, 20, 0.15);
       cursor: grab;
       user-select: none;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+      transition:
+        transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.2s ease,
+        background 0.2s ease,
+        opacity 0.18s ease;
     }
 
     .token.literal {
@@ -239,12 +251,31 @@
     }
 
     .drop-marker {
-      width: 8px;
-      height: 60px;
-      background: var(--matrix-green);
-      border-radius: 4px;
-      box-shadow: 0 0 12px var(--matrix-glow);
+      width: 4px;
+      height: 64px;
+      background: linear-gradient(to bottom, transparent, var(--matrix-green), transparent);
+      box-shadow: 0 0 16px var(--matrix-glow);
       opacity: 0.8;
+      transition: opacity 0.2s ease;
+    }
+
+    .token.dragging {
+      transform: scale(1.08);
+      box-shadow: 0 0 28px var(--matrix-glow);
+      opacity: 0.85;
+    }
+
+    .token.will-shift {
+      transform: translateX(18px);
+    }
+
+    .token.shift-left {
+      transform: translateX(-12px);
+    }
+
+    .token.removing {
+      opacity: 0;
+      transform: scale(0.6);
     }
 
     /* Natural zone */
@@ -261,7 +292,7 @@
       box-sizing: border-box;
       user-select: none;
       overflow-wrap: anywhere;
-      min-height: 28vh;
+      height: 100%;
     }
 
     .phrase {
@@ -305,21 +336,23 @@
   </div>
 
   <div class="palette" aria-label="Palette de briques">
-    <div class="palette-buttons">
-      <div class="brick" draggable="true" data-symbol="D">D</div>
-      <div class="brick" draggable="true" data-symbol="N">N</div>
-      <div class="brick" draggable="true" data-symbol="V">V</div>
-      <div class="brick" draggable="true" data-symbol="Adj">Adj</div>
-      <div class="brick" draggable="true" data-symbol="Adv">Adv</div>
-      <div class="brick" draggable="true" data-symbol="Prep">Prep</div>
-      <div class="brick" draggable="true" data-symbol="C">C</div>
-      <div class="brick" draggable="true" data-symbol="Rel">Rel</div>
-      <div class="brick" draggable="true" data-symbol="X">X</div>
+    <div class="palette-tools">
+      <div class="palette-buttons">
+        <div class="brick" draggable="true" data-symbol="D">D</div>
+        <div class="brick" draggable="true" data-symbol="N">N</div>
+        <div class="brick" draggable="true" data-symbol="V">V</div>
+        <div class="brick" draggable="true" data-symbol="Adj">Adj</div>
+        <div class="brick" draggable="true" data-symbol="Adv">Adv</div>
+        <div class="brick" draggable="true" data-symbol="Prep">Prep</div>
+        <div class="brick" draggable="true" data-symbol="C">C</div>
+        <div class="brick" draggable="true" data-symbol="Rel">Rel</div>
+        <div class="brick" draggable="true" data-symbol="X">X</div>
+      </div>
+      <form class="literal-form" aria-label="Ajout de texte littéral">
+        <input type="text" name="literal" placeholder="Texte littéral" aria-label="Texte littéral" />
+        <button type="submit">+</button>
+      </form>
     </div>
-    <form class="literal-form" aria-label="Ajout de texte littéral">
-      <input type="text" name="literal" placeholder="Texte littéral" aria-label="Texte littéral" />
-      <button type="submit">+ literal</button>
-    </form>
   </div>
 
   <div class="logic-area" aria-label="Zone de formule">
@@ -507,9 +540,12 @@
         deleteBtn.textContent = '×';
         deleteBtn.addEventListener('click', (event) => {
           event.stopPropagation();
-          removeToken(token.id);
-          renderLogic();
-          renderPhrase();
+          brick.classList.add('removing');
+          setTimeout(() => {
+            removeToken(token.id);
+            renderLogic();
+            renderPhrase();
+          }, 180);
         });
 
         brick.appendChild(deleteBtn);
@@ -518,11 +554,21 @@
           currentDrag = { type: 'token', id: token.id };
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('text/plain', 'token');
+          brick.classList.add('dragging');
         });
 
-        brick.addEventListener('dragend', clearMarker);
+        brick.addEventListener('dragend', () => {
+          brick.classList.remove('dragging');
+          clearMarker();
+        });
 
         formulaRow.appendChild(brick);
+      });
+    }
+
+    function resetShifts() {
+      Array.from(formulaRow.children).forEach((child) => {
+        child.classList.remove('will-shift', 'shift-left');
       });
     }
 
@@ -531,6 +577,7 @@
         dropMarker.parentElement.removeChild(dropMarker);
       }
       dropMarker = null;
+      resetShifts();
     }
 
     function getDropIndex(event) {
@@ -545,18 +592,29 @@
       return children.length;
     }
 
-    function placeMarker(index) {
-      if (!dropMarker) {
-        dropMarker = document.createElement('div');
-        dropMarker.className = 'drop-marker';
+    function applyShiftEffects(index) {
+      const children = Array.from(formulaRow.children).filter((el) => el !== dropMarker);
+      const target = children[index];
+      const previous = children[index - 1];
+      if (target) {
+        target.classList.add('will-shift');
       }
+      if (previous) {
+        previous.classList.add('shift-left');
+      }
+    }
+
+    function placeMarker(index) {
       clearMarker();
+      dropMarker = document.createElement('div');
+      dropMarker.className = 'drop-marker';
       const children = Array.from(formulaRow.children);
       if (index >= children.length) {
         formulaRow.appendChild(dropMarker);
       } else {
         formulaRow.insertBefore(dropMarker, children[index]);
       }
+      applyShiftEffects(index);
     }
 
     function handlePaletteDragStart(event) {
