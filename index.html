@@ -59,6 +59,7 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      justify-content: center;
     }
 
     .palette .brick {
@@ -321,14 +322,21 @@
     <h3>Règles du Phrasor</h3>
     <p>Glisse les briques vertes depuis la palette vers la ligne centrale pour construire ta formule. Fais-les glisser pour les réordonner ou clique sur × pour supprimer.</p>
     <ul>
-      <li><strong>D</strong> : Déterminant</li>
       <li><strong>N</strong> : Nom</li>
+      <li><strong>D</strong> : Déterminant</li>
       <li><strong>V</strong> : Verbe</li>
       <li><strong>Adj</strong> : Adjectif</li>
       <li><strong>Adv</strong> : Adverbe</li>
       <li><strong>Prep</strong> : Préposition</li>
       <li><strong>C</strong> : Connecteur</li>
       <li><strong>Rel</strong> : Relatif / pronom</li>
+      <li><strong>Pro</strong> : Pronom personnel</li>
+      <li><strong>Aux</strong> : Auxiliaire</li>
+      <li><strong>Neg</strong> : Négation</li>
+      <li><strong>DetP</strong> : Déterminant possessif</li>
+      <li><strong>Quant</strong> : Quantifieur</li>
+      <li><strong>Int</strong> : Interrogatif</li>
+      <li><strong>Excl</strong> : Exclamatif</li>
       <li><strong>X</strong> : Néologisme</li>
       <li><em>Littéral</em> : ajoute ton propre texte via le champ gris.</li>
     </ul>
@@ -338,14 +346,21 @@
   <div class="palette" aria-label="Palette de briques">
     <div class="palette-tools">
       <div class="palette-buttons">
-        <div class="brick" draggable="true" data-symbol="D">D</div>
         <div class="brick" draggable="true" data-symbol="N">N</div>
+        <div class="brick" draggable="true" data-symbol="D">D</div>
         <div class="brick" draggable="true" data-symbol="V">V</div>
         <div class="brick" draggable="true" data-symbol="Adj">Adj</div>
         <div class="brick" draggable="true" data-symbol="Adv">Adv</div>
         <div class="brick" draggable="true" data-symbol="Prep">Prep</div>
         <div class="brick" draggable="true" data-symbol="C">C</div>
         <div class="brick" draggable="true" data-symbol="Rel">Rel</div>
+        <div class="brick" draggable="true" data-symbol="Pro">Pro</div>
+        <div class="brick" draggable="true" data-symbol="Aux">Aux</div>
+        <div class="brick" draggable="true" data-symbol="Neg">Neg</div>
+        <div class="brick" draggable="true" data-symbol="DetP">DetP</div>
+        <div class="brick" draggable="true" data-symbol="Quant">Quant</div>
+        <div class="brick" draggable="true" data-symbol="Int">Int</div>
+        <div class="brick" draggable="true" data-symbol="Excl">Excl</div>
         <div class="brick" draggable="true" data-symbol="X">X</div>
       </div>
       <form class="literal-form" aria-label="Ajout de texte littéral">
@@ -366,20 +381,204 @@
   </div>
 
   <script>
-    const banks = {
-      D: ["le", "la", "les", "un", "une", "ce", "cette", "cet", "mon", "ton", "son", "notre", "votre", "quelque", "chaque", "aucun", "tout", "nul", "quel", "leur", "ses", "vos", "ces"],
-      N: ["feu", "monde", "machine", "corps", "temps", "regard", "silence", "nuit", "lumière", "matière", "système", "souffle", "spirale", "signal", "verre", "tempête", "horizon", "circuit", "réseau", "pulsar", "cendres", "oracle", "prisme", "jardin", "voûte", "algorithme", "éclipse", "boussole", "quartz"],
-      V: ["brûle", "traverse", "éclaire", "calcule", "observe", "persiste", "glisse", "tombe", "résonne", "attend", "transforme", "chuchote", "s'enroule", "palpite", "s'éteint", "s'ouvre", "frissonne", "rebondit", "fusionne", "dérive", "s'embrase", "vacille", "respire", "surgit", "amorce", "relie", "module", "convoque", "projette"],
-      Adj: ["fragile", "lent", "sacré", "instable", "froid", "lumineux", "secret", "dense", "immobile", "profond", "souterrain", "vif", "étrange", "liquide", "métallique", "occulte", "poreux", "serein", "tremblant", "minuscule", "solaire", "nocturne", "oblique", "rétro", "vaporeux"],
-      Adv: ["lentement", "brutalement", "silencieusement", "soudainement", "éternellement", "presque", "parfois", "rarement", "exactement", "simplement", "doucement", "ailleurs", "davantage", "toujours", "brièvement", "intimement"],
-      Prep: ["dans", "sur", "sous", "avec", "contre", "entre", "parmi", "vers", "auprès de", "au-dessus de", "au-dessous de", "près de", "au-delà de", "face à", "le long de"],
-      C: ["et", "mais", "donc", "car", "pourtant", "ou", "tandis que", "alors", "cependant", "ainsi", "puis", "ensuite", "or", "pour finir"],
-      Rel: ["qui", "que", "dont", "où", "lequel", "laquelle", "lesquels", "lesquelles", "auquel", "duquel"],
-      X: ["fluxonde", "cryostelle", "mégaonde", "lumicore", "nébulex", "quantorme", "morphose", "giganœud", "aéromesh", "chromaïde", "métatrame", "synaplex", "ultravaste", "pulséide", "oniricube", "tachyonite", "orbisphère", "noéticule"]
+    const SHEET_BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?output=csv";
+
+    const categoryCodes = [
+      "N",
+      "D",
+      "V",
+      "Adj",
+      "Adv",
+      "Prep",
+      "C",
+      "Rel",
+      "Pro",
+      "Aux",
+      "Neg",
+      "DetP",
+      "Quant",
+      "Int",
+      "Excl",
+      "X",
+    ];
+
+    const fallbackBanks = {
+      N: [
+        { id: "1", value: "feu", genre: "m", tags: "nature", registre: "poétique", notes: "" },
+        { id: "2", value: "monde", genre: "m", tags: "cosmos", registre: "neutre", notes: "" },
+        { id: "3", value: "machine", genre: "f", tags: "techno", registre: "neutre", notes: "" },
+        { id: "4", value: "corps", genre: "m", tags: "organique", registre: "neutre", notes: "" },
+        { id: "5", value: "temps", genre: "m", tags: "concept", registre: "poétique", notes: "" },
+        { id: "6", value: "regard", genre: "m", tags: "perception", registre: "neutre", notes: "" },
+        { id: "7", value: "silence", genre: "m", tags: "son", registre: "poétique", notes: "" },
+        { id: "8", value: "nuit", genre: "f", tags: "temps", registre: "neutre", notes: "" },
+        { id: "9", value: "lumière", genre: "f", tags: "physique", registre: "poétique", notes: "" },
+        { id: "10", value: "matière", genre: "f", tags: "physique", registre: "technique", notes: "" },
+      ],
+      D: [
+        { id: "1", value: "le", genre: "m", nombre: "sg", tags: "défini", registre: "neutre", notes: "" },
+        { id: "2", value: "la", genre: "f", nombre: "sg", tags: "défini", registre: "neutre", notes: "" },
+        { id: "3", value: "les", genre: "x", nombre: "pl", tags: "défini", registre: "neutre", notes: "" },
+        { id: "4", value: "un", genre: "m", nombre: "sg", tags: "indéfini", registre: "neutre", notes: "" },
+        { id: "5", value: "une", genre: "f", nombre: "sg", tags: "indéfini", registre: "neutre", notes: "" },
+      ],
+      V: [
+        { id: "1", value: "brûler", valence: "trans", tags: "feu", registre: "neutre", notes: "" },
+        { id: "2", value: "traverser", valence: "trans", tags: "mouvement", registre: "neutre", notes: "" },
+        { id: "3", value: "éclairer", valence: "trans", tags: "lumière", registre: "neutre", notes: "" },
+        { id: "4", value: "observer", valence: "trans", tags: "perception", registre: "neutre", notes: "" },
+        { id: "5", value: "persister", valence: "intrans", tags: "temps", registre: "neutre", notes: "" },
+        { id: "6", value: "glisser", valence: "intrans", tags: "mouvement", registre: "neutre", notes: "" },
+      ],
+      Adj: [
+        { id: "1", value: "fragile", tags: "matière", registre: "poétique", notes: "" },
+        { id: "2", value: "lent", tags: "vitesse", registre: "neutre", notes: "" },
+        { id: "3", value: "sacré", tags: "mystique", registre: "soutenu", notes: "" },
+        { id: "4", value: "lumineux", tags: "lumière", registre: "neutre", notes: "" },
+        { id: "5", value: "secret", tags: "mystère", registre: "neutre", notes: "" },
+      ],
+      Adv: [
+        { id: "1", value: "lentement", tags: "vitesse", registre: "neutre", notes: "" },
+        { id: "2", value: "brutalement", tags: "intensité", registre: "neutre", notes: "" },
+        { id: "3", value: "silencieusement", tags: "son", registre: "poétique", notes: "" },
+      ],
+      Prep: [
+        { id: "1", value: "dans", tags: "espace", registre: "neutre", notes: "" },
+        { id: "2", value: "sur", tags: "espace", registre: "neutre", notes: "" },
+        { id: "3", value: "avec", tags: "relation", registre: "neutre", notes: "" },
+      ],
+      C: [
+        { id: "1", value: "et", type: "coord", tags: "logique", registre: "neutre", notes: "" },
+        { id: "2", value: "mais", type: "coord", tags: "opposition", registre: "neutre", notes: "" },
+        { id: "3", value: "donc", type: "coord", tags: "logique", registre: "neutre", notes: "" },
+      ],
+      Rel: [
+        { id: "1", value: "qui", tags: "relatif", registre: "neutre", notes: "" },
+        { id: "2", value: "que", tags: "relatif", registre: "neutre", notes: "" },
+      ],
+      Pro: [
+        { id: "1", value: "je", personne: "1", nombre: "sg", genre: "x", tags: "sujet", registre: "neutre", notes: "" },
+        { id: "2", value: "elle", personne: "3", nombre: "sg", genre: "f", tags: "sujet", registre: "neutre", notes: "" },
+      ],
+      Aux: [
+        { id: "1", value: "être", tags: "auxiliaire", registre: "neutre", notes: "" },
+        { id: "2", value: "avoir", tags: "auxiliaire", registre: "neutre", notes: "" },
+      ],
+      Neg: [
+        { id: "1", value: "ne", position: "pré", tags: "négation", registre: "neutre", notes: "" },
+        { id: "2", value: "pas", position: "post", tags: "négation", registre: "neutre", notes: "" },
+      ],
+      DetP: [
+        { id: "1", value: "mon", personne: "1", nombre: "sg", tags: "possessif", registre: "neutre", notes: "" },
+        { id: "2", value: "ton", personne: "2", nombre: "sg", tags: "possessif", registre: "neutre", notes: "" },
+      ],
+      Quant: [
+        { id: "1", value: "beaucoup de", intensité: "fort", tags: "quantité", registre: "neutre", notes: "" },
+        { id: "2", value: "peu de", intensité: "faible", tags: "quantité", registre: "neutre", notes: "" },
+      ],
+      Int: [
+        { id: "1", value: "pourquoi", type: "question", tags: "interrogatif", registre: "neutre", notes: "" },
+        { id: "2", value: "qui", type: "question", tags: "interrogatif", registre: "neutre", notes: "" },
+      ],
+      Excl: [
+        { id: "1", value: "comme", type: "exclamatif", tags: "émotion", registre: "neutre", notes: "" },
+        { id: "2", value: "que de", type: "exclamatif", tags: "émotion", registre: "neutre", notes: "" },
+      ],
+      X: [
+        { id: "1", value: "fluxonde", origine: "IA", tags: "techno", registre: "poétique", notes: "" },
+        { id: "2", value: "cryostelle", origine: "astro", tags: "froid", registre: "poétique", notes: "" },
+        { id: "3", value: "mégaonde", origine: "science", tags: "onde", registre: "technique", notes: "" },
+      ],
     };
 
-    const symbolKeys = Object.keys(banks);
+    let banks = JSON.parse(JSON.stringify(fallbackBanks));
+
+    const symbolKeys = [...categoryCodes];
     const punctuationStickLeft = /^[,.;:!?]/;
+
+    function cloneBanks(source) {
+      return JSON.parse(JSON.stringify(source));
+    }
+
+    async function loadCategory(code) {
+      const url = `${SHEET_BASE}&sheet=${encodeURIComponent(code)}`;
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const text = await response.text();
+        const parsed = parseCSV(text);
+        if (parsed.length === 0) {
+          console.warn(`[Phrasor] Feuille ${code} vide, fallback local utilisé.`);
+          banks[code] = cloneBanks(fallbackBanks[code]);
+        } else {
+          banks[code] = parsed;
+        }
+      } catch (error) {
+        console.warn(`[Phrasor] Impossible de charger ${code} depuis le sheet:`, error);
+        banks[code] = cloneBanks(fallbackBanks[code]);
+      }
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let current = '';
+      let inQuotes = false;
+      const fields = [];
+
+      function endField() {
+        fields.push(current);
+        current = '';
+      }
+
+      function endRow() {
+        if (fields.length || current) {
+          endField();
+          rows.push(fields.splice(0));
+        }
+      }
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        if (char === '"') {
+          if (inQuotes && text[i + 1] === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          endField();
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && text[i + 1] === '\n') {
+            i += 1;
+          }
+          endRow();
+        } else {
+          current += char;
+        }
+      }
+      endRow();
+
+      if (rows.length === 0) return [];
+      const headers = rows[0].map((h) => h.trim());
+      const objects = rows.slice(1).map((row) => {
+        const obj = {};
+        headers.forEach((header, idx) => {
+          obj[header] = (row[idx] || '').trim();
+        });
+        return obj;
+      }).filter((obj) => Object.values(obj).some((v) => v !== ''));
+      return objects;
+    }
+
+    async function loadAllBanks() {
+      for (const code of categoryCodes) {
+        await loadCategory(code);
+      }
+      renderPhrase();
+    }
 
     const formulaRow = document.querySelector('.formula-row');
     const phraseContainer = document.querySelector('.phrase');
@@ -405,7 +604,8 @@
     }
 
     function randomIndex(symbol) {
-      const bank = banks[symbol];
+      const bank = banks[symbol] || [];
+      if (!bank.length) return 0;
       return Math.floor(Math.random() * bank.length);
     }
 
@@ -425,13 +625,18 @@
       if (token.wordIndex === undefined || token.wordIndex === null) {
         token.wordIndex = randomIndex(token.value);
       }
-      const bank = banks[token.value];
+      const bank = banks[token.value] || [];
+      if (!bank.length) {
+        token.wordIndex = 0;
+        return token.wordIndex;
+      }
       token.wordIndex = ((token.wordIndex % bank.length) + bank.length) % bank.length;
       return token.wordIndex;
     }
 
     function adjustTokenIndex(token, delta) {
-      const bank = banks[token.value];
+      const bank = banks[token.value] || [];
+      if (!bank.length) return;
       token.wordIndex = ((token.wordIndex + delta) % bank.length + bank.length) % bank.length;
     }
 
@@ -493,10 +698,10 @@
     }
 
     function updateSpanFromToken(span, token) {
-      const bank = banks[token.value];
+      const bank = banks[token.value] || [];
       const idx = ensureWordIndex(token);
       span.dataset.index = String(idx);
-      span.textContent = bank[idx];
+      span.textContent = bank[idx]?.value || `[${token.value}]`;
     }
 
     function renderPhrase() {
@@ -689,6 +894,7 @@
     buildInitialTokens();
     renderLogic();
     renderPhrase();
+    loadAllBanks();
   </script>
 </body>
 </html>
