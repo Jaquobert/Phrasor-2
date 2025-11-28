@@ -13,21 +13,24 @@
       height: 100vh;
       background: #111;
       color: #d0f6f0;
-      font-family: monospace;
+      font-family: "Share Tech Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      position: relative;
     }
 
     .logic {
       background: #000;
-      padding: 16px;
-      min-height: 35vh;
+      padding: 24px;
+      min-height: 40vh;
       box-sizing: border-box;
-      color: #6af5db;
-      font-size: 14px;
+      color: #39ff14;
+      font-size: clamp(24px, 4vw, 42px);
       border: none;
       outline: none;
       resize: none;
       width: 100%;
       font-family: inherit;
+      text-align: center;
+      letter-spacing: 0.04em;
     }
 
     .natural {
@@ -39,8 +42,8 @@
       justify-content: center;
       text-align: center;
       font-family: "Georgia", "Times New Roman", serif;
-      font-size: clamp(24px, 5vw, 48px);
-      padding: 32px;
+      font-size: clamp(28px, 5vw, 52px);
+      padding: 40px;
       box-sizing: border-box;
       user-select: none;
       overflow-wrap: anywhere;
@@ -58,14 +61,84 @@
       border-radius: 4px;
       white-space: pre;
       display: inline-block;
+      touch-action: none;
     }
 
     .word:active {
       background: #eef;
     }
+
+    .help-button {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #39ff14;
+      border: 1px solid rgba(57, 255, 20, 0.5);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+      user-select: none;
+    }
+
+    .help-button:hover {
+      background: rgba(255, 255, 255, 0.14);
+      transform: scale(1.05);
+    }
+
+    .help-panel {
+      position: absolute;
+      top: 56px;
+      right: 12px;
+      background: #0f0f0f;
+      color: #d6ffd0;
+      border: 1px solid rgba(57, 255, 20, 0.4);
+      border-radius: 10px;
+      padding: 16px;
+      width: min(420px, 90vw);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 10;
+      display: none;
+    }
+
+    .help-panel h3 {
+      margin: 0 0 8px;
+      color: #39ff14;
+      font-weight: 600;
+    }
+
+    .help-panel ul {
+      padding-left: 18px;
+      margin: 8px 0;
+    }
   </style>
 </head>
 <body>
+  <button class="help-button" aria-label="Afficher les règles">?</button>
+  <div class="help-panel" role="dialog" aria-label="Règles du jeu">
+    <h3>Règles du Phrasor</h3>
+    <p>Écris une formule dans l'espace logique. Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer.</p>
+    <ul>
+      <li><strong>D</strong> : Déterminant</li>
+      <li><strong>N</strong> : Nom</li>
+      <li><strong>V</strong> : Verbe</li>
+      <li><strong>Adj</strong> : Adjectif</li>
+      <li><strong>Adv</strong> : Adverbe</li>
+      <li><strong>Prep</strong> : Préposition</li>
+      <li><strong>C</strong> : Connecteur</li>
+      <li><strong>X</strong> : Néologisme</li>
+      <li>Tout autre caractère reste littéral et s'affiche tel quel.</li>
+    </ul>
+    <p>La ponctuation se colle automatiquement au mot précédent. Double-clique sur un mot pour le faire muter au hasard.</p>
+  </div>
   <textarea class="logic" aria-label="Espace logique">D N V Adv, C D N Adj V !</textarea>
   <div class="natural" aria-live="polite">
     <div class="phrase"></div>
@@ -74,70 +147,185 @@
   <script>
     // Dictionnaires immuables pour chaque symbole reconnu
     const banks = {
-      D: ["le", "la", "les", "un", "une", "ce", "cette", "cet", "mon", "ton", "son"],
-      N: ["feu", "monde", "machine", "corps", "temps", "regard", "silence", "nuit", "lumière", "matière", "système", "souffle"],
-      V: ["brûle", "traverse", "éclaire", "calcule", "observe", "persiste", "glisse", "tombe", "résonne", "attend", "transforme"],
-      Adj: ["fragile", "lent", "sacré", "instable", "froid", "lumineux", "secret", "dense", "immobile", "profond"],
-      Adv: ["lentement", "brutalement", "silencieusement", "soudainement", "éternellement", "presque", "parfois"],
-      Prep: ["dans", "sur", "sous", "avec", "contre", "entre", "parmi"],
-      C: ["et", "mais", "donc", "car", "pourtant", "ou", "tandis que", "alors"]
+      D: ["le", "la", "les", "un", "une", "ce", "cette", "cet", "mon", "ton", "son", "notre", "votre", "quelque", "chaque", "aucun", "tout", "nul", "quel"],
+      N: ["feu", "monde", "machine", "corps", "temps", "regard", "silence", "nuit", "lumière", "matière", "système", "souffle", "spirale", "signal", "verre", "tempête", "horizon", "circuit", "réseau", "pulsar", "cendres", "oracle", "prisme", "jardin"],
+      V: ["brûle", "traverse", "éclaire", "calcule", "observe", "persiste", "glisse", "tombe", "résonne", "attend", "transforme", "chuchote", "s'enroule", "palpite", "s'éteint", "s'ouvre", "frissonne", "rebondit", "fusionne", "dérive", "s'embrase", "vacille", "respire"],
+      Adj: ["fragile", "lent", "sacré", "instable", "froid", "lumineux", "secret", "dense", "immobile", "profond", "souterrain", "vif", "étrange", "liquide", "métallique", "occulte", "poreux", "serein", "tremblant", "minuscule"],
+      Adv: ["lentement", "brutalement", "silencieusement", "soudainement", "éternellement", "presque", "parfois", "rarement", "exactement", "simplement", "doucement", "ailleurs", "davantage"],
+      Prep: ["dans", "sur", "sous", "avec", "contre", "entre", "parmi", "vers", "auprès de", "au-dessus de", "au-dessous de", "près de"],
+      C: ["et", "mais", "donc", "car", "pourtant", "ou", "tandis que", "alors", "cependant", "ainsi", "puis", "ensuite"],
+      X: ["fluxonde", "cryostelle", "mégaonde", "lumicore", "nébulex", "quantorme", "morphose", "giganœud", "aéromesh", "chromaïde", "métatrame", "synaplex", "ultravaste", "pulséide"]
     };
 
     const logicInput = document.querySelector('.logic');
     const phraseContainer = document.querySelector('.phrase');
+    const helpButton = document.querySelector('.help-button');
+    const helpPanel = document.querySelector('.help-panel');
 
-    // Parse la formule en tokens symboliques ou littéraux
+    let currentTokens = [];
+    let tokenStates = [];
+
+    const punctuationStickLeft = /^[,.;:!?]/;
+
+    // Parse la formule en tokens symboliques ou littéraux en séparant la ponctuation collée
     function parseFormula(formula) {
-      const rawTokens = formula.trim().length ? formula.trim().split(/\s+/) : [];
-      return rawTokens.map(token => {
-        if (Object.prototype.hasOwnProperty.call(banks, token)) {
-          return { type: 'symbol', value: token };
-        }
-        return { type: 'literal', value: token };
+      const chunks = formula.trim().length ? formula.trim().split(/\s+/) : [];
+      const tokens = [];
+
+      chunks.forEach(chunk => {
+        const pieces = chunk.match(/[\p{L}]+|[^\p{L}]+/gu) || [];
+        pieces.forEach(piece => {
+          if (Object.prototype.hasOwnProperty.call(banks, piece)) {
+            tokens.push({ type: 'symbol', value: piece });
+          } else {
+            tokens.push({ type: 'literal', value: piece });
+          }
+        });
       });
+
+      return tokens;
     }
 
-    // Crée un span interactif pour un symbole grammatical
-    function createWordSpan(symbol) {
-      const span = document.createElement('span');
-      span.className = 'word';
-      span.dataset.symbol = symbol;
-      span.dataset.index = '0';
-      span.textContent = banks[symbol][0];
+    function updateSpanContent(span, symbol, stateIndex) {
+      const bank = banks[symbol];
+      let idx = stateIndex;
+      if (idx === null || idx === undefined) {
+        idx = Math.floor(Math.random() * bank.length);
+      }
+      idx = ((idx % bank.length) + bank.length) % bank.length;
+      span.dataset.index = String(idx);
+      span.textContent = bank[idx];
+      return idx;
+    }
+
+    function adjustIndex(span, delta, tokenIndex) {
+      const symbol = span.dataset.symbol;
+      const bank = banks[symbol];
+      let idx = parseInt(span.dataset.index, 10) + delta;
+      idx = ((idx % bank.length) + bank.length) % bank.length;
+      span.dataset.index = String(idx);
+      span.textContent = bank[idx];
+      tokenStates[tokenIndex] = idx;
+    }
+
+    function randomizeWord(span, tokenIndex) {
+      const symbol = span.dataset.symbol;
+      const bank = banks[symbol];
+      const idx = Math.floor(Math.random() * bank.length);
+      span.dataset.index = String(idx);
+      span.textContent = bank[idx];
+      tokenStates[tokenIndex] = idx;
+    }
+
+    function addInteractions(span, tokenIndex) {
+      let lastY = null;
+      let moved = false;
+      let skipTap = false;
 
       span.addEventListener('wheel', (event) => {
         event.preventDefault();
-        const bank = banks[symbol];
-        let idx = parseInt(span.dataset.index, 10);
-        idx = event.deltaY < 0 ? idx + 1 : idx - 1;
-        if (idx < 0) idx = bank.length - 1;
-        if (idx >= bank.length) idx = 0;
-        span.dataset.index = String(idx);
-        span.textContent = bank[idx];
+        const direction = event.deltaY < 0 ? 1 : -1;
+        adjustIndex(span, direction, tokenIndex);
       });
 
-      return span;
+      span.addEventListener('pointerdown', (event) => {
+        span.setPointerCapture(event.pointerId);
+        lastY = event.clientY;
+        moved = false;
+      });
+
+      span.addEventListener('pointermove', (event) => {
+        if (lastY === null) return;
+        const deltaY = event.clientY - lastY;
+        const threshold = 10;
+        if (Math.abs(deltaY) >= threshold) {
+          const steps = Math.trunc(deltaY / threshold);
+          adjustIndex(span, -steps, tokenIndex);
+          lastY = event.clientY;
+          moved = true;
+        }
+      });
+
+      span.addEventListener('pointerup', (event) => {
+        span.releasePointerCapture(event.pointerId);
+        if (!moved && !skipTap) {
+          adjustIndex(span, 1, tokenIndex);
+        }
+        lastY = null;
+        skipTap = false;
+      });
+
+      span.addEventListener('pointercancel', () => {
+        lastY = null;
+      });
+
+      span.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        skipTap = true;
+        randomizeWord(span, tokenIndex);
+      });
     }
 
     // Reconstruit la phrase naturelle depuis la formule
     function renderPhrase() {
-      phraseContainer.innerHTML = '';
       const tokens = parseFormula(logicInput.value);
 
+      const preservedStates = (() => {
+        const newStates = new Array(tokens.length).fill(null);
+        let oldPos = 0;
+        tokens.forEach((token, idx) => {
+          while (oldPos < currentTokens.length) {
+            const previous = currentTokens[oldPos];
+            if (previous.type === token.type && previous.value === token.value) {
+              newStates[idx] = tokenStates[oldPos];
+              oldPos += 1;
+              return;
+            }
+            oldPos += 1;
+          }
+        });
+        return newStates;
+      })();
+
+      phraseContainer.innerHTML = '';
+      tokenStates = new Array(tokens.length).fill(null);
+
       tokens.forEach((token, idx) => {
-        if (idx > 0) {
+        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.type === 'literal' && punctuationStickLeft.test(token.value));
+        if (shouldAddSpace) {
           phraseContainer.appendChild(document.createTextNode(' '));
         }
 
         if (token.type === 'symbol') {
-          phraseContainer.appendChild(createWordSpan(token.value));
+          const span = document.createElement('span');
+          span.className = 'word';
+          span.dataset.symbol = token.value;
+          span.dataset.tokenIndex = String(idx);
+
+          const appliedIndex = updateSpanContent(span, token.value, preservedStates[idx]);
+          tokenStates[idx] = appliedIndex;
+          addInteractions(span, idx);
+          phraseContainer.appendChild(span);
         } else {
           const text = document.createElement('span');
           text.textContent = token.value;
           phraseContainer.appendChild(text);
         }
       });
+
+      currentTokens = tokens;
     }
+
+    helpButton.addEventListener('click', () => {
+      const isOpen = helpPanel.style.display === 'block';
+      helpPanel.style.display = isOpen ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!helpPanel.contains(event.target) && event.target !== helpButton) {
+        helpPanel.style.display = 'none';
+      }
+    });
 
     // Met à jour en temps réel lors de la saisie
     logicInput.addEventListener('input', renderPhrase);
