@@ -208,10 +208,10 @@
       cursor: grab;
       user-select: none;
       transition:
-        transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-        box-shadow 0.2s ease,
-        background 0.2s ease,
-        opacity 0.18s ease;
+        transform 0.42s cubic-bezier(0.22, 1.2, 0.36, 1),
+        box-shadow 0.28s ease,
+        background 0.22s ease,
+        opacity 0.22s ease;
     }
 
     .token.literal {
@@ -252,10 +252,10 @@
     }
 
     .drop-marker {
-      width: 4px;
+      width: 1px;
       height: 64px;
-      background: linear-gradient(to bottom, transparent, var(--matrix-green), transparent);
-      box-shadow: 0 0 16px var(--matrix-glow);
+      background: rgba(57,255,20,0.85);
+      box-shadow: 0 0 6px var(--matrix-glow);
       opacity: 0.8;
       transition: opacity 0.2s ease;
     }
@@ -340,7 +340,7 @@
       <li><strong>X</strong> : Néologisme</li>
       <li><em>Littéral</em> : ajoute ton propre texte via le champ gris.</li>
     </ul>
-    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Double-clique pour muter au hasard. La ponctuation se colle automatiquement au mot précédent.</p>
+    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Maj + clic sur un nom alterne singulier/pluriel. La ponctuation se colle automatiquement au mot précédent.</p>
   </div>
 
   <div class="palette" aria-label="Palette de briques">
@@ -774,12 +774,16 @@
         token.index = compatible[randomIdx];
         token.state = buildDefaultState(token.type, token.index);
         ensureTokenIndex(token);
+        applyAllAgreements();
+        renderPhrase();
         return;
       }
 
       token.index = randomIndex(token.type);
       token.state = buildDefaultState(token.type, token.index);
       ensureTokenIndex(token);
+      applyAllAgreements();
+      renderPhrase();
     }
 
     function addInteractions(span, token) {
@@ -791,13 +795,15 @@
         event.preventDefault();
         const direction = event.deltaY < 0 ? 1 : -1;
         adjustTokenIndex(token, direction);
-        updateSpanFromToken(span, token);
+        applyAllAgreements();
+        renderPhrase();
       });
 
       span.addEventListener('pointerdown', (event) => {
         span.setPointerCapture(event.pointerId);
         lastY = event.clientY;
         moved = false;
+        skipTap = false;
       });
 
       span.addEventListener('pointermove', (event) => {
@@ -807,7 +813,8 @@
         if (Math.abs(deltaY) >= threshold) {
           const steps = Math.trunc(deltaY / threshold);
           adjustTokenIndex(token, -steps);
-          updateSpanFromToken(span, token);
+          applyAllAgreements();
+          renderPhrase();
           lastY = event.clientY;
           moved = true;
         }
@@ -815,9 +822,15 @@
 
       span.addEventListener('pointerup', (event) => {
         span.releasePointerCapture(event.pointerId);
+        if (event.shiftKey) {
+          lastY = null;
+          skipTap = true;
+          return;
+        }
         if (!moved && !skipTap) {
           adjustTokenIndex(token, 1);
-          updateSpanFromToken(span, token);
+          applyAllAgreements();
+          renderPhrase();
         }
         lastY = null;
         skipTap = false;
@@ -827,10 +840,10 @@
         lastY = null;
       });
 
-      span.addEventListener('dblclick', (event) => {
-        event.preventDefault();
-        skipTap = true;
-        if (token.type === 'N') {
+      span.addEventListener('click', (event) => {
+        if (event.shiftKey && token.type === 'N') {
+          event.preventDefault();
+          skipTap = true;
           ensureTokenIndex(token);
           token.state.runtime.nombre = token.state.runtime.nombre === 'sg' ? 'pl' : 'sg';
           logicTokens.forEach((t) => {
@@ -838,10 +851,9 @@
               ensureTokenIndex(t);
             }
           });
+          applyAllAgreements();
           renderPhrase();
-        } else {
-          randomizeTokenWord(token);
-          updateSpanFromToken(span, token);
+          return;
         }
       });
     }
@@ -921,6 +933,12 @@
       });
     }
 
+    function applyAllAgreements() {
+      applyVerbAgreement();
+      applyDeterminantAgreement();
+      applyAdjectiveAgreement();
+    }
+
     function realizeToken(token) {
       const bank = banks[token.type] || [];
       return bank[token.index]?.value;
@@ -949,9 +967,7 @@
     function renderPhrase() {
       phraseContainer.innerHTML = '';
 
-      applyVerbAgreement();
-      applyDeterminantAgreement();
-      applyAdjectiveAgreement();
+      applyAllAgreements();
 
       logicTokens.forEach((token) => {
         const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.kind === 'literal' && punctuationStickLeft.test(token.value));
@@ -1036,6 +1052,11 @@
     function getDropIndex(event) {
       const children = Array.from(formulaRow.children).filter((el) => el !== dropMarker);
       const x = event.clientX;
+      const rowRect = formulaRow.getBoundingClientRect();
+
+      if (x < rowRect.left) return 0;
+      if (x > rowRect.right) return logicTokens.length;
+
       for (let i = 0; i < children.length; i += 1) {
         const rect = children[i].getBoundingClientRect();
         if (x < rect.left + rect.width / 2) {
@@ -1112,6 +1133,7 @@
 
       clearMarker();
       currentDrag = null;
+      applyAllAgreements();
       renderLogic();
       renderPhrase();
     });
