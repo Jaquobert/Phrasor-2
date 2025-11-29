@@ -208,10 +208,10 @@
       cursor: grab;
       user-select: none;
       transition:
-        transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-        box-shadow 0.2s ease,
-        background 0.2s ease,
-        opacity 0.18s ease;
+        transform 0.42s cubic-bezier(0.22, 1.2, 0.36, 1),
+        box-shadow 0.28s ease,
+        background 0.22s ease,
+        opacity 0.22s ease;
     }
 
     .token.literal {
@@ -252,10 +252,10 @@
     }
 
     .drop-marker {
-      width: 4px;
+      width: 1px;
       height: 64px;
-      background: linear-gradient(to bottom, transparent, var(--matrix-green), transparent);
-      box-shadow: 0 0 16px var(--matrix-glow);
+      background: rgba(57,255,20,0.85);
+      box-shadow: 0 0 6px var(--matrix-glow);
       opacity: 0.8;
       transition: opacity 0.2s ease;
     }
@@ -340,7 +340,7 @@
       <li><strong>X</strong> : Néologisme</li>
       <li><em>Littéral</em> : ajoute ton propre texte via le champ gris.</li>
     </ul>
-    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Double-clique pour muter au hasard. La ponctuation se colle automatiquement au mot précédent.</p>
+    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Maj + clic sur un nom alterne singulier/pluriel. La ponctuation se colle automatiquement au mot précédent.</p>
   </div>
 
   <div class="palette" aria-label="Palette de briques">
@@ -510,6 +510,8 @@
 
     let banks = JSON.parse(JSON.stringify(fallbackBanks));
 
+    window.PHRASOR_DEBUG = true;
+
     const symbolKeys = [...categoryCodes];
     const punctuationStickLeft = /^[,.;:!?]/;
 
@@ -615,13 +617,58 @@
 
     const initialFormula = "D N V Adv , C D N Adj V !";
 
-    function createToken(value, type) {
-      const tokenType = type || (symbolKeys.includes(value) ? 'symbol' : 'literal');
-      const token = { id: tokenIdCounter++, type: tokenType, value };
-      if (tokenType === 'symbol') {
-        token.wordIndex = randomIndex(value);
+    function buildDefaultState(tokenType, index) {
+      const entry = (banks[tokenType] || [])[index] || {};
+      const emptyState = { source: {}, runtime: {} };
+
+      if (tokenType === 'N') {
+        const source = { genre: entry.genre || 'x', nombre: 'sg' };
+        return { source, runtime: { ...source } };
       }
-      return token;
+
+      if (tokenType === 'D') {
+        const source = { genre: entry.genre || 'x', nombre: entry.nombre || 'x' };
+        return { source, runtime: { ...source } };
+      }
+
+      if (tokenType === 'Pro') {
+        const source = {
+          personne: entry.personne ? Number(entry.personne) : 3,
+          nombre: entry.nombre || 'sg',
+          genre: entry.genre || 'x',
+        };
+        return { source, runtime: { ...source } };
+      }
+
+      if (tokenType === 'V') {
+        const source = { personne: 3, nombre: 'sg' };
+        return { source, runtime: { ...source, temps: 'present' } };
+      }
+
+      if (tokenType === 'Adj') {
+        const source = { genre: 'x', nombre: 'sg' };
+        return { source, runtime: { ...source } };
+      }
+
+      return emptyState;
+    }
+
+    function createToken(value, forcedKind) {
+      const isSymbol = (forcedKind || symbolKeys.includes(value)) && forcedKind !== 'literal';
+      if (!isSymbol) {
+        return { id: tokenIdCounter++, kind: 'literal', type: 'literal', value, state: {} };
+      }
+
+      const index = randomIndex(value);
+      const state = buildDefaultState(value, index);
+
+      return {
+        id: tokenIdCounter++,
+        kind: 'symbol',
+        type: value,
+        index,
+        state,
+      };
     }
 
     function randomIndex(symbol) {
@@ -642,27 +689,101 @@
       }
     }
 
-    function ensureWordIndex(token) {
-      if (token.wordIndex === undefined || token.wordIndex === null) {
-        token.wordIndex = randomIndex(token.value);
+    function getCompatibleDeterminantIndices(currentToken) {
+      const currentIndex = logicTokens.findIndex(t => t.id === currentToken.id);
+      const nextToken = logicTokens[currentIndex + 1];
+      const baseBank = banks.D || [];
+      if (!nextToken || nextToken.type !== 'N') {
+        return baseBank.map((_, idx) => idx);
       }
-      const bank = banks[token.value] || [];
-      if (!bank.length) {
-        token.wordIndex = 0;
-        return token.wordIndex;
+
+      ensureTokenIndex(nextToken);
+
+      const genre = nextToken.state?.runtime?.genre;
+      const nombre = nextToken.state?.runtime?.nombre;
+
+      return baseBank
+        .map((entry, idx) => ({ entry, idx }))
+        .filter(({ entry }) => (entry.genre === genre || entry.genre === 'x')
+          && (entry.nombre === nombre || entry.nombre === 'x'))
+        .map(({ idx }) => idx);
+    }
+
+    function ensureTokenIndex(token) {
+      if (token.kind !== 'symbol') return null;
+
+      if (token.index === undefined || token.index === null) {
+        token.index = randomIndex(token.type);
       }
-      token.wordIndex = ((token.wordIndex % bank.length) + bank.length) % bank.length;
-      return token.wordIndex;
+
+      const bank = banks[token.type] || [];
+      const previousIndex = token.__stateIndex ?? token.index;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!bank.length) {
+          token.index = 0;
+        } else if (!compatible.length) {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+        } else if (!compatible.includes(token.index)) {
+          token.index = compatible[0];
+        }
+      } else if (!bank.length) {
+        token.index = 0;
+      } else {
+        token.index = ((token.index % bank.length) + bank.length) % bank.length;
+      }
+
+      const hasState = token.state && token.state.source && token.state.runtime;
+      if (!hasState || token.index !== previousIndex) {
+        token.state = buildDefaultState(token.type, token.index);
+      }
+
+      token.__stateIndex = token.index;
+      return token.index;
     }
 
     function adjustTokenIndex(token, delta) {
-      const bank = banks[token.value] || [];
+      if (token.kind !== 'symbol') return;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!compatible.length) return;
+        ensureTokenIndex(token);
+        const currentPos = compatible.indexOf(token.index);
+        const nextPos = ((currentPos + delta) % compatible.length + compatible.length) % compatible.length;
+        token.index = compatible[nextPos];
+        token.state = buildDefaultState(token.type, token.index);
+        return;
+      }
+
+      const bank = banks[token.type] || [];
       if (!bank.length) return;
-      token.wordIndex = ((token.wordIndex + delta) % bank.length + bank.length) % bank.length;
+      token.index = ((token.index + delta) % bank.length + bank.length) % bank.length;
+      token.state = buildDefaultState(token.type, token.index);
+      ensureTokenIndex(token);
     }
 
     function randomizeTokenWord(token) {
-      token.wordIndex = randomIndex(token.value);
+      if (token.kind !== 'symbol') return;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!compatible.length) return;
+        const randomIdx = Math.floor(Math.random() * compatible.length);
+        token.index = compatible[randomIdx];
+        token.state = buildDefaultState(token.type, token.index);
+        ensureTokenIndex(token);
+        applyAllAgreements();
+        renderPhrase();
+        return;
+      }
+
+      token.index = randomIndex(token.type);
+      token.state = buildDefaultState(token.type, token.index);
+      ensureTokenIndex(token);
+      applyAllAgreements();
+      renderPhrase();
     }
 
     function addInteractions(span, token) {
@@ -674,13 +795,15 @@
         event.preventDefault();
         const direction = event.deltaY < 0 ? 1 : -1;
         adjustTokenIndex(token, direction);
-        updateSpanFromToken(span, token);
+        applyAllAgreements();
+        renderPhrase();
       });
 
       span.addEventListener('pointerdown', (event) => {
         span.setPointerCapture(event.pointerId);
         lastY = event.clientY;
         moved = false;
+        skipTap = false;
       });
 
       span.addEventListener('pointermove', (event) => {
@@ -690,7 +813,8 @@
         if (Math.abs(deltaY) >= threshold) {
           const steps = Math.trunc(deltaY / threshold);
           adjustTokenIndex(token, -steps);
-          updateSpanFromToken(span, token);
+          applyAllAgreements();
+          renderPhrase();
           lastY = event.clientY;
           moved = true;
         }
@@ -698,9 +822,15 @@
 
       span.addEventListener('pointerup', (event) => {
         span.releasePointerCapture(event.pointerId);
+        if (event.shiftKey) {
+          lastY = null;
+          skipTap = true;
+          return;
+        }
         if (!moved && !skipTap) {
           adjustTokenIndex(token, 1);
-          updateSpanFromToken(span, token);
+          applyAllAgreements();
+          renderPhrase();
         }
         lastY = null;
         skipTap = false;
@@ -710,34 +840,145 @@
         lastY = null;
       });
 
-      span.addEventListener('dblclick', (event) => {
-        event.preventDefault();
-        skipTap = true;
-        randomizeTokenWord(token);
-        updateSpanFromToken(span, token);
+      span.addEventListener('click', (event) => {
+        if (event.shiftKey && token.type === 'N') {
+          event.preventDefault();
+          skipTap = true;
+          ensureTokenIndex(token);
+          token.state.runtime.nombre = token.state.runtime.nombre === 'sg' ? 'pl' : 'sg';
+          logicTokens.forEach((t) => {
+            if (t.type === 'D') {
+              ensureTokenIndex(t);
+            }
+          });
+          applyAllAgreements();
+          renderPhrase();
+          return;
+        }
       });
     }
 
     function updateSpanFromToken(span, token) {
-      const bank = banks[token.value] || [];
-      const idx = ensureWordIndex(token);
+      const bank = banks[token.type] || [];
+      const idx = ensureTokenIndex(token);
       span.dataset.index = String(idx);
-      span.textContent = bank[idx]?.value || `[${token.value}]`;
+      span.textContent = realizeToken(token) || `[${token.type}]`;
+      applyDebugTooltip(span, token);
+    }
+
+    function isStrongPunctuationToken(token) {
+      if (!token || token.kind !== 'literal') return false;
+      return /[.!?;]/.test(token.value);
+    }
+
+    function applyVerbAgreement() {
+      let currentSubject = null;
+
+      for (let i = 0; i < logicTokens.length; i += 1) {
+        const token = logicTokens[i];
+
+        if (isStrongPunctuationToken(token)) {
+          currentSubject = null;
+          continue;
+        }
+
+        if (token.type === 'Pro' || token.type === 'N') {
+          ensureTokenIndex(token);
+          currentSubject = token;
+        }
+
+        if (token.type === 'V') {
+          ensureTokenIndex(token);
+          if (currentSubject) {
+            if (currentSubject.type === 'Pro') {
+              token.state.runtime.personne = currentSubject.state?.runtime?.personne ?? token.state.runtime.personne ?? 3;
+              token.state.runtime.nombre = currentSubject.state?.runtime?.nombre || token.state.runtime.nombre || 'sg';
+            } else if (currentSubject.type === 'N') {
+              token.state.runtime.personne = 3;
+              token.state.runtime.nombre = currentSubject.state?.runtime?.nombre || token.state.runtime.nombre || 'sg';
+            }
+          } else {
+            token.state.runtime.personne = 3;
+            token.state.runtime.nombre = 'sg';
+          }
+        }
+      }
+    }
+
+    function applyDeterminantAgreement() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type === 'D') {
+          ensureTokenIndex(token);
+          const next = logicTokens[idx + 1];
+          if (next?.type === 'N') {
+            ensureTokenIndex(next);
+            token.state.runtime.genre = next.state?.runtime?.genre;
+            token.state.runtime.nombre = next.state?.runtime?.nombre;
+          }
+        }
+      });
+    }
+
+    function applyAdjectiveAgreement() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type === 'Adj') {
+          ensureTokenIndex(token);
+          const prev = logicTokens[idx - 1];
+          if (prev?.type === 'N') {
+            ensureTokenIndex(prev);
+            token.state.runtime.genre = prev.state?.runtime?.genre;
+            token.state.runtime.nombre = prev.state?.runtime?.nombre;
+          }
+        }
+      });
+    }
+
+    function applyAllAgreements() {
+      applyVerbAgreement();
+      applyDeterminantAgreement();
+      applyAdjectiveAgreement();
+    }
+
+    function realizeToken(token) {
+      const bank = banks[token.type] || [];
+      return bank[token.index]?.value;
+    }
+
+    function applyDebugTooltip(span, token) {
+      if (!window.PHRASOR_DEBUG || token.kind !== 'symbol') {
+        span.removeAttribute('title');
+        return;
+      }
+
+      const rt = token.state?.runtime || {};
+      let tooltip = token.type;
+
+      if (token.type === 'V') {
+        tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${rt.temps || 'present'}`;
+      } else if (token.type === 'Pro') {
+        tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${rt.genre ?? 'x'}`;
+      } else if (token.type === 'Adj' || token.type === 'N' || token.type === 'D') {
+        tooltip += ` | ${rt.genre ?? 'x'} | ${rt.nombre ?? '?'}`;
+      }
+
+      span.title = tooltip;
     }
 
     function renderPhrase() {
       phraseContainer.innerHTML = '';
 
-      logicTokens.forEach((token, idx) => {
-        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.type === 'literal' && punctuationStickLeft.test(token.value));
+      applyAllAgreements();
+
+      logicTokens.forEach((token) => {
+        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.kind === 'literal' && punctuationStickLeft.test(token.value));
         if (shouldAddSpace) {
           phraseContainer.appendChild(document.createTextNode(' '));
         }
 
-        if (token.type === 'symbol') {
+        if (token.kind === 'symbol') {
           const span = document.createElement('span');
           span.className = 'word';
-          span.dataset.symbol = token.value;
+          span.dataset.symbol = token.type;
           span.dataset.tokenId = String(token.id);
           updateSpanFromToken(span, token);
           addInteractions(span, token);
@@ -748,6 +989,8 @@
           phraseContainer.appendChild(text);
         }
       });
+
+      window.PHRASOR_STATE = logicTokens;
     }
 
     function renderLogic() {
@@ -755,10 +998,10 @@
 
       logicTokens.forEach((token) => {
         const brick = document.createElement('div');
-        brick.className = `token ${token.type === 'literal' ? 'literal' : 'symbol'}`;
+        brick.className = `token ${token.kind === 'literal' ? 'literal' : 'symbol'}`;
         brick.draggable = true;
         brick.dataset.id = token.id;
-        brick.textContent = token.value;
+        brick.textContent = token.kind === 'symbol' ? token.type : token.value;
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
@@ -809,6 +1052,11 @@
     function getDropIndex(event) {
       const children = Array.from(formulaRow.children).filter((el) => el !== dropMarker);
       const x = event.clientX;
+      const rowRect = formulaRow.getBoundingClientRect();
+
+      if (x < rowRect.left) return 0;
+      if (x > rowRect.right) return logicTokens.length;
+
       for (let i = 0; i < children.length; i += 1) {
         const rect = children[i].getBoundingClientRect();
         if (x < rect.left + rect.width / 2) {
@@ -885,6 +1133,7 @@
 
       clearMarker();
       currentDrag = null;
+      applyAllAgreements();
       renderLogic();
       renderPhrase();
     });
