@@ -615,13 +615,47 @@
 
     const initialFormula = "D N V Adv , C D N Adj V !";
 
-    function createToken(value, type) {
-      const tokenType = type || (symbolKeys.includes(value) ? 'symbol' : 'literal');
-      const token = { id: tokenIdCounter++, type: tokenType, value };
-      if (tokenType === 'symbol') {
-        token.wordIndex = randomIndex(value);
+    function buildDefaultState(tokenType, index) {
+      if (tokenType === 'N') {
+        const genre = banks.N?.[index]?.genre || 'x';
+        return { nombre: 'sg', genre };
       }
-      return token;
+      if (tokenType === 'D') {
+        return { nombre: 'sg', genre: 'x' };
+      }
+      if (tokenType === 'Pro') {
+        const entry = banks.Pro?.[index];
+        return {
+          personne: entry?.personne ? Number(entry.personne) : 3,
+          nombre: entry?.nombre || 'sg',
+          genre: entry?.genre || 'x',
+        };
+      }
+      if (tokenType === 'V') {
+        return { personne: 3, nombre: 'sg', temps: 'present' };
+      }
+      if (tokenType === 'Adj') {
+        return { genre: 'x', nombre: 'sg' };
+      }
+      return {};
+    }
+
+    function createToken(value, forcedKind) {
+      const isSymbol = (forcedKind || symbolKeys.includes(value)) && forcedKind !== 'literal';
+      if (!isSymbol) {
+        return { id: tokenIdCounter++, kind: 'literal', type: 'literal', value, state: {} };
+      }
+
+      const index = randomIndex(value);
+      const state = buildDefaultState(value, index);
+
+      return {
+        id: tokenIdCounter++,
+        kind: 'symbol',
+        type: value,
+        index,
+        state,
+      };
     }
 
     function randomIndex(symbol) {
@@ -642,27 +676,149 @@
       }
     }
 
-    function ensureWordIndex(token) {
-      if (token.wordIndex === undefined || token.wordIndex === null) {
-        token.wordIndex = randomIndex(token.value);
+    function getCompatibleDeterminantIndices(currentToken) {
+      const currentIndex = logicTokens.findIndex(t => t.id === currentToken.id);
+      const nextToken = logicTokens[currentIndex + 1];
+      const baseBank = banks.D || [];
+      if (!nextToken || nextToken.type !== 'N') {
+        return baseBank.map((_, idx) => idx);
       }
-      const bank = banks[token.value] || [];
+
+      const genre = nextToken.state?.genre;
+      const nombre = nextToken.state?.nombre;
+
+      return baseBank
+        .map((entry, idx) => ({ entry, idx }))
+        .filter(({ entry }) => (entry.genre === genre || entry.genre === 'x')
+          && (entry.nombre === nombre || entry.nombre === 'x'))
+        .map(({ idx }) => idx);
+    }
+
+    function ensureTokenIndex(token) {
+      if (token.kind !== 'symbol') return null;
+
+      if (token.index === undefined || token.index === null) {
+        token.index = randomIndex(token.type);
+      }
+
+      token.state = token.state || {};
+
+      if (token.type === 'N') {
+        const bank = banks[token.type] || [];
+        if (bank.length) {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+          token.state.genre = bank[token.index]?.genre || 'x';
+          token.state.nombre = token.state.nombre || 'sg';
+        } else {
+          token.index = 0;
+          token.state.genre = token.state.genre || 'x';
+          token.state.nombre = token.state.nombre || 'sg';
+        }
+        return token.index;
+      }
+
+      if (token.type === 'Pro') {
+        const bank = banks.Pro || [];
+        if (bank.length) {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+          const entry = bank[token.index] || {};
+          token.state.personne = entry.personne ? Number(entry.personne) : token.state.personne ?? 3;
+          token.state.nombre = entry.nombre || token.state.nombre || 'sg';
+          token.state.genre = entry.genre || token.state.genre || 'x';
+        } else {
+          token.index = 0;
+          token.state.personne = token.state.personne ?? 3;
+          token.state.nombre = token.state.nombre || 'sg';
+          token.state.genre = token.state.genre || 'x';
+        }
+        return token.index;
+      }
+
+      if (token.type === 'D') {
+        const baseBank = banks.D || [];
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!baseBank.length || !compatible.length) {
+          token.index = baseBank.length ? ((token.index % baseBank.length) + baseBank.length) % baseBank.length : 0;
+          token.state.nombre = token.state.nombre || 'sg';
+          token.state.genre = token.state.genre || 'x';
+          return token.index;
+        }
+
+        if (!compatible.includes(token.index)) {
+          token.index = compatible[0];
+        }
+        token.state.nombre = token.state.nombre || 'sg';
+        token.state.genre = token.state.genre || 'x';
+        return token.index;
+      }
+
+      if (token.type === 'V') {
+        const bank = banks.V || [];
+        if (!bank.length) {
+          token.index = 0;
+        } else {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+        }
+        token.state.personne = token.state.personne ?? 3;
+        token.state.nombre = token.state.nombre || 'sg';
+        token.state.temps = token.state.temps || 'present';
+        return token.index;
+      }
+
+      if (token.type === 'Adj') {
+        const bank = banks.Adj || [];
+        if (!bank.length) {
+          token.index = 0;
+        } else {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+        }
+        token.state.genre = token.state.genre || 'x';
+        token.state.nombre = token.state.nombre || 'sg';
+        return token.index;
+      }
+
+      const bank = banks[token.type] || [];
       if (!bank.length) {
-        token.wordIndex = 0;
-        return token.wordIndex;
+        token.index = 0;
+        return token.index;
       }
-      token.wordIndex = ((token.wordIndex % bank.length) + bank.length) % bank.length;
-      return token.wordIndex;
+      token.index = ((token.index % bank.length) + bank.length) % bank.length;
+      return token.index;
     }
 
     function adjustTokenIndex(token, delta) {
-      const bank = banks[token.value] || [];
+      if (token.kind !== 'symbol') return;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!compatible.length) return;
+        ensureTokenIndex(token);
+        const currentPos = compatible.indexOf(token.index);
+        const nextPos = ((currentPos + delta) % compatible.length + compatible.length) % compatible.length;
+        token.index = compatible[nextPos];
+        return;
+      }
+
+      const bank = banks[token.type] || [];
       if (!bank.length) return;
-      token.wordIndex = ((token.wordIndex + delta) % bank.length + bank.length) % bank.length;
+      token.index = ((token.index + delta) % bank.length + bank.length) % bank.length;
+      ensureTokenIndex(token);
     }
 
     function randomizeTokenWord(token) {
-      token.wordIndex = randomIndex(token.value);
+      if (token.kind !== 'symbol') return;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!compatible.length) return;
+        const randomIdx = Math.floor(Math.random() * compatible.length);
+        token.index = compatible[randomIdx];
+        ensureTokenIndex(token);
+        return;
+      }
+
+      token.index = randomIndex(token.type);
+      ensureTokenIndex(token);
     }
 
     function addInteractions(span, token) {
@@ -713,31 +869,101 @@
       span.addEventListener('dblclick', (event) => {
         event.preventDefault();
         skipTap = true;
-        randomizeTokenWord(token);
-        updateSpanFromToken(span, token);
+        if (token.type === 'N') {
+          token.state.nombre = token.state.nombre === 'sg' ? 'pl' : 'sg';
+          renderPhrase();
+        } else {
+          randomizeTokenWord(token);
+          updateSpanFromToken(span, token);
+        }
       });
     }
 
     function updateSpanFromToken(span, token) {
-      const bank = banks[token.value] || [];
-      const idx = ensureWordIndex(token);
+      const bank = banks[token.type] || [];
+      const idx = ensureTokenIndex(token);
       span.dataset.index = String(idx);
-      span.textContent = bank[idx]?.value || `[${token.value}]`;
+      span.textContent = bank[idx]?.value || `[${token.type}]`;
+    }
+
+    function isStrongPunctuationToken(token) {
+      if (!token || token.kind !== 'literal') return false;
+      return /[.!?;]/.test(token.value);
+    }
+
+    function applyVerbAgreement() {
+      let currentSubject = null;
+
+      for (let i = 0; i < logicTokens.length; i += 1) {
+        const token = logicTokens[i];
+
+        if (isStrongPunctuationToken(token)) {
+          currentSubject = null;
+          continue;
+        }
+
+        if (token.type === 'Pro' || token.type === 'N') {
+          ensureTokenIndex(token);
+          currentSubject = token;
+        }
+
+        if (token.type === 'V') {
+          ensureTokenIndex(token);
+          if (currentSubject) {
+            if (currentSubject.type === 'Pro') {
+              token.state.personne = currentSubject.state?.personne ?? token.state.personne ?? 3;
+              token.state.nombre = currentSubject.state?.nombre || token.state.nombre || 'sg';
+            } else if (currentSubject.type === 'N') {
+              token.state.personne = 3;
+              token.state.nombre = currentSubject.state?.nombre || token.state.nombre || 'sg';
+            }
+          }
+        }
+      }
+    }
+
+    function applyDeterminantAgreement() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type === 'D') {
+          const next = logicTokens[idx + 1];
+          if (next?.type === 'N') {
+            token.state.genre = next.state?.genre;
+            token.state.nombre = next.state?.nombre;
+          }
+        }
+      });
+    }
+
+    function applyAdjectiveAgreement() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type === 'Adj') {
+          ensureTokenIndex(token);
+          const prev = logicTokens[idx - 1];
+          if (prev?.type === 'N') {
+            token.state.genre = prev.state?.genre;
+            token.state.nombre = prev.state?.nombre;
+          }
+        }
+      });
     }
 
     function renderPhrase() {
       phraseContainer.innerHTML = '';
 
-      logicTokens.forEach((token, idx) => {
-        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.type === 'literal' && punctuationStickLeft.test(token.value));
+      applyVerbAgreement();
+      applyDeterminantAgreement();
+      applyAdjectiveAgreement();
+
+      logicTokens.forEach((token) => {
+        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.kind === 'literal' && punctuationStickLeft.test(token.value));
         if (shouldAddSpace) {
           phraseContainer.appendChild(document.createTextNode(' '));
         }
 
-        if (token.type === 'symbol') {
+        if (token.kind === 'symbol') {
           const span = document.createElement('span');
           span.className = 'word';
-          span.dataset.symbol = token.value;
+          span.dataset.symbol = token.type;
           span.dataset.tokenId = String(token.id);
           updateSpanFromToken(span, token);
           addInteractions(span, token);
@@ -748,6 +974,8 @@
           phraseContainer.appendChild(text);
         }
       });
+
+      window.PHRASOR_STATE = logicTokens;
     }
 
     function renderLogic() {
@@ -755,10 +983,10 @@
 
       logicTokens.forEach((token) => {
         const brick = document.createElement('div');
-        brick.className = `token ${token.type === 'literal' ? 'literal' : 'symbol'}`;
+        brick.className = `token ${token.kind === 'literal' ? 'literal' : 'symbol'}`;
         brick.draggable = true;
         brick.dataset.id = token.id;
-        brick.textContent = token.value;
+        brick.textContent = token.kind === 'symbol' ? token.type : token.value;
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
