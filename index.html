@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phrasor V1</title>
+  <style>
+    :root {
+      --matrix-green: #39ff14;
+      --matrix-glow: rgba(57, 255, 20, 0.35);
+      --dark-bg: #050505;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0d0d0d;
+      color: #d0f6f0;
+      font-family: "Share Tech Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr 1fr;
+    }
+
+    /* Palette */
+    .palette {
+      background: #000;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      z-index: 2;
+    }
+
+    .palette h1 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--matrix-green);
+      letter-spacing: 0.1em;
+    }
+
+    .palette-tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .palette-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .palette .brick {
+      background: rgba(57, 255, 20, 0.12);
+      color: var(--matrix-green);
+      border: 1px solid var(--matrix-glow);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .palette .brick:active {
+      cursor: grabbing;
+      transform: scale(1.02);
+      box-shadow: 0 0 12px var(--matrix-glow);
+    }
+
+    .literal-form {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .literal-form input {
+      background: #0f0f0f;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e8ffef;
+      padding: 8px 10px;
+      border-radius: 6px;
+      min-width: 140px;
+    }
+
+    .literal-form button {
+      background: var(--matrix-green);
+      color: #020202;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 0 12px var(--matrix-glow);
+    }
+
+    /* Help */
+    .help-button {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--matrix-green);
+      border: 1px solid var(--matrix-glow);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+      user-select: none;
+      z-index: 3;
+    }
+
+    .help-button:hover {
+      background: rgba(255, 255, 255, 0.14);
+      transform: scale(1.05);
+    }
+
+    .help-panel {
+      position: absolute;
+      top: 56px;
+      right: 12px;
+      background: #0f0f0f;
+      color: #d6ffd0;
+      border: 1px solid var(--matrix-glow);
+      border-radius: 10px;
+      padding: 16px;
+      width: min(420px, 90vw);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 10;
+      display: none;
+    }
+
+    .help-panel h3 {
+      margin: 0 0 8px;
+      color: var(--matrix-green);
+      font-weight: 600;
+    }
+
+    .help-panel ul {
+      padding-left: 18px;
+      margin: 8px 0;
+    }
+
+    /* Logic zone */
+    .logic-area {
+      height: 100%;
+      background: var(--dark-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .formula-viewport {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 28px;
+      overflow-x: auto;
+    }
+
+    .formula-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      min-height: 72px;
+      width: max-content;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .token {
+      position: relative;
+      background: rgba(57, 255, 20, 0.15);
+      color: var(--matrix-green);
+      border: 1px solid var(--matrix-glow);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: clamp(20px, 3vw, 36px);
+      letter-spacing: 0.08em;
+      box-shadow: 0 0 14px rgba(57, 255, 20, 0.15);
+      cursor: grab;
+      user-select: none;
+      transition:
+        transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.2s ease,
+        background 0.2s ease,
+        opacity 0.18s ease;
+    }
+
+    .token.literal {
+      color: #e8ffef;
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.08);
+    }
+
+    .token:active {
+      cursor: grabbing;
+      transform: scale(1.03);
+      box-shadow: 0 0 18px var(--matrix-glow);
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+    }
+
+    .token:hover .delete-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drop-marker {
+      width: 4px;
+      height: 64px;
+      background: linear-gradient(to bottom, transparent, var(--matrix-green), transparent);
+      box-shadow: 0 0 16px var(--matrix-glow);
+      opacity: 0.8;
+      transition: opacity 0.2s ease;
+    }
+
+    .token.dragging {
+      transform: scale(1.08);
+      box-shadow: 0 0 28px var(--matrix-glow);
+      opacity: 0.85;
+    }
+
+    .token.will-shift {
+      transform: translateX(18px);
+    }
+
+    .token.shift-left {
+      transform: translateX(-12px);
+    }
+
+    .token.removing {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+
+    /* Natural zone */
+    .natural {
+      background: #fff;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-family: "Georgia", "Times New Roman", serif;
+      font-size: clamp(28px, 5vw, 52px);
+      padding: 40px;
+      box-sizing: border-box;
+      user-select: none;
+      overflow-wrap: anywhere;
+      height: 100%;
+    }
+
+    .phrase {
+      line-height: 1.4;
+      transition: color 0.2s ease;
+    }
+
+    .word {
+      cursor: ns-resize;
+      transition: color 0.2s ease, background 0.2s ease;
+      padding: 2px 4px;
+      border-radius: 4px;
+      white-space: pre;
+      display: inline-block;
+      touch-action: none;
+    }
+
+    .word:active {
+      background: #eef;
+    }
+  </style>
+</head>
+<body>
+  <button class="help-button" aria-label="Afficher les règles">?</button>
+  <div class="help-panel" role="dialog" aria-label="Règles du jeu">
+    <h3>Règles du Phrasor</h3>
+    <p>Glisse les briques vertes depuis la palette vers la ligne centrale pour construire ta formule. Fais-les glisser pour les réordonner ou clique sur × pour supprimer.</p>
+    <ul>
+      <li><strong>N</strong> : Nom</li>
+      <li><strong>D</strong> : Déterminant</li>
+      <li><strong>V</strong> : Verbe</li>
+      <li><strong>Adj</strong> : Adjectif</li>
+      <li><strong>Adv</strong> : Adverbe</li>
+      <li><strong>Prep</strong> : Préposition</li>
+      <li><strong>C</strong> : Connecteur</li>
+      <li><strong>Rel</strong> : Relatif / pronom</li>
+      <li><strong>Pro</strong> : Pronom personnel</li>
+      <li><strong>Aux</strong> : Auxiliaire</li>
+      <li><strong>Neg</strong> : Négation</li>
+      <li><strong>DetP</strong> : Déterminant possessif</li>
+      <li><strong>Quant</strong> : Quantifieur</li>
+      <li><strong>Int</strong> : Interrogatif</li>
+      <li><strong>Excl</strong> : Exclamatif</li>
+      <li><strong>X</strong> : Néologisme</li>
+      <li><em>Littéral</em> : ajoute ton propre texte via le champ gris.</li>
+    </ul>
+    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Double-clique pour muter au hasard. La ponctuation se colle automatiquement au mot précédent.</p>
+  </div>
+
+  <div class="palette" aria-label="Palette de briques">
+    <div class="palette-tools">
+      <div class="palette-buttons">
+        <div class="brick" draggable="true" data-symbol="N">N</div>
+        <div class="brick" draggable="true" data-symbol="D">D</div>
+        <div class="brick" draggable="true" data-symbol="V">V</div>
+        <div class="brick" draggable="true" data-symbol="Adj">Adj</div>
+        <div class="brick" draggable="true" data-symbol="Adv">Adv</div>
+        <div class="brick" draggable="true" data-symbol="Prep">Prep</div>
+        <div class="brick" draggable="true" data-symbol="C">C</div>
+        <div class="brick" draggable="true" data-symbol="Rel">Rel</div>
+        <div class="brick" draggable="true" data-symbol="Pro">Pro</div>
+        <div class="brick" draggable="true" data-symbol="Aux">Aux</div>
+        <div class="brick" draggable="true" data-symbol="Neg">Neg</div>
+        <div class="brick" draggable="true" data-symbol="DetP">DetP</div>
+        <div class="brick" draggable="true" data-symbol="Quant">Quant</div>
+        <div class="brick" draggable="true" data-symbol="Int">Int</div>
+        <div class="brick" draggable="true" data-symbol="Excl">Excl</div>
+        <div class="brick" draggable="true" data-symbol="X">X</div>
+      </div>
+      <form class="literal-form" aria-label="Ajout de texte littéral">
+        <input type="text" name="literal" placeholder="Texte littéral" aria-label="Texte littéral" />
+        <button type="submit">+</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="logic-area" aria-label="Zone de formule">
+    <div class="formula-viewport">
+      <div class="formula-row" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="natural" aria-live="polite">
+    <div class="phrase"></div>
+  </div>
+
+  <script>
+    const CSV_URLS = {
+      N: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=2135700293&single=true&output=csv",
+      D: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1962635794&single=true&output=csv",
+      V: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=208884221&single=true&output=csv",
+      Adj: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=601735406&single=true&output=csv",
+      Adv: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1103675474&single=true&output=csv",
+      Prep: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=196780714&single=true&output=csv",
+      C: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1150539438&single=true&output=csv",
+      Rel: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1182666692&single=true&output=csv",
+      Pro: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=279749913&single=true&output=csv",
+      Aux: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1206471130&single=true&output=csv",
+      Neg: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1366092723&single=true&output=csv",
+      DetP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1198095895&single=true&output=csv",
+      Quant: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=159317568&single=true&output=csv",
+      Int: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1656255545&single=true&output=csv",
+      Excl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=51747757&single=true&output=csv",
+      X: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=0&single=true&output=csv",
+    };
+
+    const categoryCodes = [
+      "N",
+      "D",
+      "V",
+      "Adj",
+      "Adv",
+      "Prep",
+      "C",
+      "Rel",
+      "Pro",
+      "Aux",
+      "Neg",
+      "DetP",
+      "Quant",
+      "Int",
+      "Excl",
+      "X",
+    ];
+
+    const fallbackBanks = {
+      N: [
+        { id: "1", value: "feu", genre: "m", tags: "nature", registre: "poétique", notes: "" },
+        { id: "2", value: "monde", genre: "m", tags: "cosmos", registre: "neutre", notes: "" },
+        { id: "3", value: "machine", genre: "f", tags: "techno", registre: "neutre", notes: "" },
+        { id: "4", value: "corps", genre: "m", tags: "organique", registre: "neutre", notes: "" },
+        { id: "5", value: "temps", genre: "m", tags: "concept", registre: "poétique", notes: "" },
+        { id: "6", value: "regard", genre: "m", tags: "perception", registre: "neutre", notes: "" },
+        { id: "7", value: "silence", genre: "m", tags: "son", registre: "poétique", notes: "" },
+        { id: "8", value: "nuit", genre: "f", tags: "temps", registre: "neutre", notes: "" },
+        { id: "9", value: "lumière", genre: "f", tags: "physique", registre: "poétique", notes: "" },
+        { id: "10", value: "matière", genre: "f", tags: "physique", registre: "technique", notes: "" },
+      ],
+      D: [
+        { id: "1", value: "le", genre: "m", nombre: "sg", tags: "défini", registre: "neutre", notes: "" },
+        { id: "2", value: "la", genre: "f", nombre: "sg", tags: "défini", registre: "neutre", notes: "" },
+        { id: "3", value: "les", genre: "x", nombre: "pl", tags: "défini", registre: "neutre", notes: "" },
+        { id: "4", value: "un", genre: "m", nombre: "sg", tags: "indéfini", registre: "neutre", notes: "" },
+        { id: "5", value: "une", genre: "f", nombre: "sg", tags: "indéfini", registre: "neutre", notes: "" },
+      ],
+      V: [
+        { id: "1", value: "brûler", valence: "trans", tags: "feu", registre: "neutre", notes: "" },
+        { id: "2", value: "traverser", valence: "trans", tags: "mouvement", registre: "neutre", notes: "" },
+        { id: "3", value: "éclairer", valence: "trans", tags: "lumière", registre: "neutre", notes: "" },
+        { id: "4", value: "observer", valence: "trans", tags: "perception", registre: "neutre", notes: "" },
+        { id: "5", value: "persister", valence: "intrans", tags: "temps", registre: "neutre", notes: "" },
+        { id: "6", value: "glisser", valence: "intrans", tags: "mouvement", registre: "neutre", notes: "" },
+      ],
+      Adj: [
+        { id: "1", value: "fragile", tags: "matière", registre: "poétique", notes: "" },
+        { id: "2", value: "lent", tags: "vitesse", registre: "neutre", notes: "" },
+        { id: "3", value: "sacré", tags: "mystique", registre: "soutenu", notes: "" },
+        { id: "4", value: "lumineux", tags: "lumière", registre: "neutre", notes: "" },
+        { id: "5", value: "secret", tags: "mystère", registre: "neutre", notes: "" },
+      ],
+      Adv: [
+        { id: "1", value: "lentement", tags: "vitesse", registre: "neutre", notes: "" },
+        { id: "2", value: "brutalement", tags: "intensité", registre: "neutre", notes: "" },
+        { id: "3", value: "silencieusement", tags: "son", registre: "poétique", notes: "" },
+      ],
+      Prep: [
+        { id: "1", value: "dans", tags: "espace", registre: "neutre", notes: "" },
+        { id: "2", value: "sur", tags: "espace", registre: "neutre", notes: "" },
+        { id: "3", value: "avec", tags: "relation", registre: "neutre", notes: "" },
+      ],
+      C: [
+        { id: "1", value: "et", type: "coord", tags: "logique", registre: "neutre", notes: "" },
+        { id: "2", value: "mais", type: "coord", tags: "opposition", registre: "neutre", notes: "" },
+        { id: "3", value: "donc", type: "coord", tags: "logique", registre: "neutre", notes: "" },
+      ],
+      Rel: [
+        { id: "1", value: "qui", tags: "relatif", registre: "neutre", notes: "" },
+        { id: "2", value: "que", tags: "relatif", registre: "neutre", notes: "" },
+      ],
+      Pro: [
+        { id: "1", value: "je", personne: "1", nombre: "sg", genre: "x", tags: "sujet", registre: "neutre", notes: "" },
+        { id: "2", value: "elle", personne: "3", nombre: "sg", genre: "f", tags: "sujet", registre: "neutre", notes: "" },
+      ],
+      Aux: [
+        { id: "1", value: "être", tags: "auxiliaire", registre: "neutre", notes: "" },
+        { id: "2", value: "avoir", tags: "auxiliaire", registre: "neutre", notes: "" },
+      ],
+      Neg: [
+        { id: "1", value: "ne", position: "pré", tags: "négation", registre: "neutre", notes: "" },
+        { id: "2", value: "pas", position: "post", tags: "négation", registre: "neutre", notes: "" },
+      ],
+      DetP: [
+        { id: "1", value: "mon", personne: "1", nombre: "sg", tags: "possessif", registre: "neutre", notes: "" },
+        { id: "2", value: "ton", personne: "2", nombre: "sg", tags: "possessif", registre: "neutre", notes: "" },
+      ],
+      Quant: [
+        { id: "1", value: "beaucoup de", intensité: "fort", tags: "quantité", registre: "neutre", notes: "" },
+        { id: "2", value: "peu de", intensité: "faible", tags: "quantité", registre: "neutre", notes: "" },
+      ],
+      Int: [
+        { id: "1", value: "pourquoi", type: "question", tags: "interrogatif", registre: "neutre", notes: "" },
+        { id: "2", value: "qui", type: "question", tags: "interrogatif", registre: "neutre", notes: "" },
+      ],
+      Excl: [
+        { id: "1", value: "comme", type: "exclamatif", tags: "émotion", registre: "neutre", notes: "" },
+        { id: "2", value: "que de", type: "exclamatif", tags: "émotion", registre: "neutre", notes: "" },
+      ],
+      X: [
+        { id: "1", value: "fluxonde", origine: "IA", tags: "techno", registre: "poétique", notes: "" },
+        { id: "2", value: "cryostelle", origine: "astro", tags: "froid", registre: "poétique", notes: "" },
+        { id: "3", value: "mégaonde", origine: "science", tags: "onde", registre: "technique", notes: "" },
+      ],
+    };
+
+    let banks = JSON.parse(JSON.stringify(fallbackBanks));
+
+    const symbolKeys = [...categoryCodes];
+    const punctuationStickLeft = /^[,.;:!?]/;
+
+    function cloneBanks(source) {
+      return JSON.parse(JSON.stringify(source));
+    }
+
+    async function loadCategory(code) {
+      const url = CSV_URLS[code];
+      if (!url) {
+        console.warn(`[Phrasor] Pas d’URL pour la catégorie ${code}`);
+        banks[code] = cloneBanks(fallbackBanks[code]);
+        return;
+      }
+      try {
+        const resp = await fetch(url, { cache: "no-store" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        const data = parseCSV(text);
+        if (!data || data.length === 0) {
+          console.warn(`[Phrasor] Feuille ${code} vide — fallback`);
+          banks[code] = cloneBanks(fallbackBanks[code]);
+        } else {
+          banks[code] = data;
+          console.log(`[Phrasor] Banque ${code} chargée (${data.length} entrées)`);
+        }
+      } catch (e) {
+        console.warn(`[Phrasor] Erreur chargement ${code}`, e);
+        banks[code] = cloneBanks(fallbackBanks[code]);
+      }
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let current = '';
+      let inQuotes = false;
+      const fields = [];
+
+      function endField() {
+        fields.push(current);
+        current = '';
+      }
+
+      function endRow() {
+        if (fields.length || current) {
+          endField();
+          rows.push(fields.splice(0));
+        }
+      }
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        if (char === '"') {
+          if (inQuotes && text[i + 1] === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          endField();
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && text[i + 1] === '\n') {
+            i += 1;
+          }
+          endRow();
+        } else {
+          current += char;
+        }
+      }
+      endRow();
+
+      if (rows.length === 0) return [];
+      const headers = rows[0].map((h) => h.trim());
+      const objects = rows.slice(1).map((row) => {
+        const obj = {};
+        headers.forEach((header, idx) => {
+          obj[header] = (row[idx] || '').trim();
+        });
+        return obj;
+      }).filter((obj) => Object.values(obj).some((v) => v !== ''));
+      return objects;
+    }
+
+    async function loadAllBanks() {
+      for (const code of categoryCodes) {
+        await loadCategory(code);
+      }
+      renderPhrase();
+    }
+
+    const formulaRow = document.querySelector('.formula-row');
+    const phraseContainer = document.querySelector('.phrase');
+    const paletteButtons = document.querySelectorAll('.palette .brick');
+    const literalForm = document.querySelector('.literal-form');
+    const helpButton = document.querySelector('.help-button');
+    const helpPanel = document.querySelector('.help-panel');
+
+    let logicTokens = [];
+    let tokenIdCounter = 0;
+    let currentDrag = null;
+    let dropMarker = null;
+
+    const initialFormula = "D N V Adv , C D N Adj V !";
+
+    function createToken(value, type) {
+      const tokenType = type || (symbolKeys.includes(value) ? 'symbol' : 'literal');
+      const token = { id: tokenIdCounter++, type: tokenType, value };
+      if (tokenType === 'symbol') {
+        token.wordIndex = randomIndex(value);
+      }
+      return token;
+    }
+
+    function randomIndex(symbol) {
+      const bank = banks[symbol] || [];
+      if (!bank.length) return 0;
+      return Math.floor(Math.random() * bank.length);
+    }
+
+    function buildInitialTokens() {
+      const parts = initialFormula.trim().split(/\s+/);
+      logicTokens = parts.map(part => createToken(part));
+    }
+
+    function removeToken(id) {
+      const idx = logicTokens.findIndex(t => t.id === id);
+      if (idx !== -1) {
+        logicTokens.splice(idx, 1);
+      }
+    }
+
+    function ensureWordIndex(token) {
+      if (token.wordIndex === undefined || token.wordIndex === null) {
+        token.wordIndex = randomIndex(token.value);
+      }
+      const bank = banks[token.value] || [];
+      if (!bank.length) {
+        token.wordIndex = 0;
+        return token.wordIndex;
+      }
+      token.wordIndex = ((token.wordIndex % bank.length) + bank.length) % bank.length;
+      return token.wordIndex;
+    }
+
+    function adjustTokenIndex(token, delta) {
+      const bank = banks[token.value] || [];
+      if (!bank.length) return;
+      token.wordIndex = ((token.wordIndex + delta) % bank.length + bank.length) % bank.length;
+    }
+
+    function randomizeTokenWord(token) {
+      token.wordIndex = randomIndex(token.value);
+    }
+
+    function addInteractions(span, token) {
+      let lastY = null;
+      let moved = false;
+      let skipTap = false;
+
+      span.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        const direction = event.deltaY < 0 ? 1 : -1;
+        adjustTokenIndex(token, direction);
+        updateSpanFromToken(span, token);
+      });
+
+      span.addEventListener('pointerdown', (event) => {
+        span.setPointerCapture(event.pointerId);
+        lastY = event.clientY;
+        moved = false;
+      });
+
+      span.addEventListener('pointermove', (event) => {
+        if (lastY === null) return;
+        const deltaY = event.clientY - lastY;
+        const threshold = 10;
+        if (Math.abs(deltaY) >= threshold) {
+          const steps = Math.trunc(deltaY / threshold);
+          adjustTokenIndex(token, -steps);
+          updateSpanFromToken(span, token);
+          lastY = event.clientY;
+          moved = true;
+        }
+      });
+
+      span.addEventListener('pointerup', (event) => {
+        span.releasePointerCapture(event.pointerId);
+        if (!moved && !skipTap) {
+          adjustTokenIndex(token, 1);
+          updateSpanFromToken(span, token);
+        }
+        lastY = null;
+        skipTap = false;
+      });
+
+      span.addEventListener('pointercancel', () => {
+        lastY = null;
+      });
+
+      span.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        skipTap = true;
+        randomizeTokenWord(token);
+        updateSpanFromToken(span, token);
+      });
+    }
+
+    function updateSpanFromToken(span, token) {
+      const bank = banks[token.value] || [];
+      const idx = ensureWordIndex(token);
+      span.dataset.index = String(idx);
+      span.textContent = bank[idx]?.value || `[${token.value}]`;
+    }
+
+    function renderPhrase() {
+      phraseContainer.innerHTML = '';
+
+      logicTokens.forEach((token, idx) => {
+        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.type === 'literal' && punctuationStickLeft.test(token.value));
+        if (shouldAddSpace) {
+          phraseContainer.appendChild(document.createTextNode(' '));
+        }
+
+        if (token.type === 'symbol') {
+          const span = document.createElement('span');
+          span.className = 'word';
+          span.dataset.symbol = token.value;
+          span.dataset.tokenId = String(token.id);
+          updateSpanFromToken(span, token);
+          addInteractions(span, token);
+          phraseContainer.appendChild(span);
+        } else {
+          const text = document.createElement('span');
+          text.textContent = token.value;
+          phraseContainer.appendChild(text);
+        }
+      });
+    }
+
+    function renderLogic() {
+      formulaRow.innerHTML = '';
+
+      logicTokens.forEach((token) => {
+        const brick = document.createElement('div');
+        brick.className = `token ${token.type === 'literal' ? 'literal' : 'symbol'}`;
+        brick.draggable = true;
+        brick.dataset.id = token.id;
+        brick.textContent = token.value;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = '×';
+        deleteBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          brick.classList.add('removing');
+          setTimeout(() => {
+            removeToken(token.id);
+            renderLogic();
+            renderPhrase();
+          }, 180);
+        });
+
+        brick.appendChild(deleteBtn);
+
+        brick.addEventListener('dragstart', (event) => {
+          currentDrag = { type: 'token', id: token.id };
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', 'token');
+          brick.classList.add('dragging');
+        });
+
+        brick.addEventListener('dragend', () => {
+          brick.classList.remove('dragging');
+          clearMarker();
+        });
+
+        formulaRow.appendChild(brick);
+      });
+    }
+
+    function resetShifts() {
+      Array.from(formulaRow.children).forEach((child) => {
+        child.classList.remove('will-shift', 'shift-left');
+      });
+    }
+
+    function clearMarker() {
+      if (dropMarker && dropMarker.parentElement) {
+        dropMarker.parentElement.removeChild(dropMarker);
+      }
+      dropMarker = null;
+      resetShifts();
+    }
+
+    function getDropIndex(event) {
+      const children = Array.from(formulaRow.children).filter((el) => el !== dropMarker);
+      const x = event.clientX;
+      for (let i = 0; i < children.length; i += 1) {
+        const rect = children[i].getBoundingClientRect();
+        if (x < rect.left + rect.width / 2) {
+          return i;
+        }
+      }
+      return children.length;
+    }
+
+    function applyShiftEffects(index) {
+      const children = Array.from(formulaRow.children).filter((el) => el !== dropMarker);
+      const target = children[index];
+      const previous = children[index - 1];
+      if (target) {
+        target.classList.add('will-shift');
+      }
+      if (previous) {
+        previous.classList.add('shift-left');
+      }
+    }
+
+    function placeMarker(index) {
+      clearMarker();
+      dropMarker = document.createElement('div');
+      dropMarker.className = 'drop-marker';
+      const children = Array.from(formulaRow.children);
+      if (index >= children.length) {
+        formulaRow.appendChild(dropMarker);
+      } else {
+        formulaRow.insertBefore(dropMarker, children[index]);
+      }
+      applyShiftEffects(index);
+    }
+
+    function handlePaletteDragStart(event) {
+      const value = event.currentTarget.dataset.symbol;
+      currentDrag = { type: 'palette', value };
+      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData('text/plain', value);
+    }
+
+    paletteButtons.forEach((btn) => {
+      btn.addEventListener('dragstart', handlePaletteDragStart);
+      btn.addEventListener('dragend', clearMarker);
+    });
+
+    formulaRow.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      const index = getDropIndex(event);
+      placeMarker(index);
+    });
+
+    formulaRow.addEventListener('dragleave', (event) => {
+      if (!formulaRow.contains(event.relatedTarget)) {
+        clearMarker();
+      }
+    });
+
+    formulaRow.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const index = getDropIndex(event);
+
+      if (currentDrag?.type === 'palette') {
+        const token = createToken(currentDrag.value, 'symbol');
+        logicTokens.splice(index, 0, token);
+      } else if (currentDrag?.type === 'token') {
+        const fromIdx = logicTokens.findIndex(t => t.id === currentDrag.id);
+        if (fromIdx !== -1) {
+          const [moved] = logicTokens.splice(fromIdx, 1);
+          const targetIndex = fromIdx < index ? index - 1 : index;
+          logicTokens.splice(targetIndex, 0, moved);
+        }
+      }
+
+      clearMarker();
+      currentDrag = null;
+      renderLogic();
+      renderPhrase();
+    });
+
+    literalForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = literalForm.literal;
+      const value = input.value;
+      if (!value) return;
+      const token = createToken(value, 'literal');
+      logicTokens.push(token);
+      input.value = '';
+      renderLogic();
+      renderPhrase();
+    });
+
+    helpButton.addEventListener('click', () => {
+      const isOpen = helpPanel.style.display === 'block';
+      helpPanel.style.display = isOpen ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!helpPanel.contains(event.target) && event.target !== helpButton) {
+        helpPanel.style.display = 'none';
+      }
+    });
+
+    buildInitialTokens();
+    renderLogic();
+    renderPhrase();
+    loadAllBanks();
+  </script>
+</body>
+</html>
