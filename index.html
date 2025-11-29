@@ -623,6 +623,20 @@
       if (tokenType === 'D') {
         return { nombre: 'sg', genre: 'x' };
       }
+      if (tokenType === 'Pro') {
+        const entry = banks.Pro?.[index];
+        return {
+          personne: entry?.personne ? Number(entry.personne) : 3,
+          nombre: entry?.nombre || 'sg',
+          genre: entry?.genre || 'x',
+        };
+      }
+      if (tokenType === 'V') {
+        return { personne: 3, nombre: 'sg', temps: 'present' };
+      }
+      if (tokenType === 'Adj') {
+        return { genre: 'x', nombre: 'sg' };
+      }
       return {};
     }
 
@@ -687,13 +701,35 @@
         token.index = randomIndex(token.type);
       }
 
+      token.state = token.state || {};
+
       if (token.type === 'N') {
         const bank = banks[token.type] || [];
         if (bank.length) {
           token.index = ((token.index % bank.length) + bank.length) % bank.length;
           token.state.genre = bank[token.index]?.genre || 'x';
+          token.state.nombre = token.state.nombre || 'sg';
         } else {
           token.index = 0;
+          token.state.genre = token.state.genre || 'x';
+          token.state.nombre = token.state.nombre || 'sg';
+        }
+        return token.index;
+      }
+
+      if (token.type === 'Pro') {
+        const bank = banks.Pro || [];
+        if (bank.length) {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+          const entry = bank[token.index] || {};
+          token.state.personne = entry.personne ? Number(entry.personne) : token.state.personne ?? 3;
+          token.state.nombre = entry.nombre || token.state.nombre || 'sg';
+          token.state.genre = entry.genre || token.state.genre || 'x';
+        } else {
+          token.index = 0;
+          token.state.personne = token.state.personne ?? 3;
+          token.state.nombre = token.state.nombre || 'sg';
+          token.state.genre = token.state.genre || 'x';
         }
         return token.index;
       }
@@ -703,12 +739,41 @@
         const compatible = getCompatibleDeterminantIndices(token);
         if (!baseBank.length || !compatible.length) {
           token.index = baseBank.length ? ((token.index % baseBank.length) + baseBank.length) % baseBank.length : 0;
+          token.state.nombre = token.state.nombre || 'sg';
+          token.state.genre = token.state.genre || 'x';
           return token.index;
         }
 
         if (!compatible.includes(token.index)) {
           token.index = compatible[0];
         }
+        token.state.nombre = token.state.nombre || 'sg';
+        token.state.genre = token.state.genre || 'x';
+        return token.index;
+      }
+
+      if (token.type === 'V') {
+        const bank = banks.V || [];
+        if (!bank.length) {
+          token.index = 0;
+        } else {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+        }
+        token.state.personne = token.state.personne ?? 3;
+        token.state.nombre = token.state.nombre || 'sg';
+        token.state.temps = token.state.temps || 'present';
+        return token.index;
+      }
+
+      if (token.type === 'Adj') {
+        const bank = banks.Adj || [];
+        if (!bank.length) {
+          token.index = 0;
+        } else {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+        }
+        token.state.genre = token.state.genre || 'x';
+        token.state.nombre = token.state.nombre || 'sg';
         return token.index;
       }
 
@@ -737,10 +802,7 @@
       const bank = banks[token.type] || [];
       if (!bank.length) return;
       token.index = ((token.index + delta) % bank.length + bank.length) % bank.length;
-
-      if (token.type === 'N') {
-        token.state.genre = bank[token.index]?.genre || 'x';
-      }
+      ensureTokenIndex(token);
     }
 
     function randomizeTokenWord(token) {
@@ -751,14 +813,12 @@
         if (!compatible.length) return;
         const randomIdx = Math.floor(Math.random() * compatible.length);
         token.index = compatible[randomIdx];
+        ensureTokenIndex(token);
         return;
       }
 
       token.index = randomIndex(token.type);
-      if (token.type === 'N') {
-        const bank = banks[token.type] || [];
-        token.state.genre = bank[token.index]?.genre || 'x';
-      }
+      ensureTokenIndex(token);
     }
 
     function addInteractions(span, token) {
@@ -826,6 +886,42 @@
       span.textContent = bank[idx]?.value || `[${token.type}]`;
     }
 
+    function isStrongPunctuationToken(token) {
+      if (!token || token.kind !== 'literal') return false;
+      return /[.!?;]/.test(token.value);
+    }
+
+    function applyVerbAgreement() {
+      let currentSubject = null;
+
+      for (let i = 0; i < logicTokens.length; i += 1) {
+        const token = logicTokens[i];
+
+        if (isStrongPunctuationToken(token)) {
+          currentSubject = null;
+          continue;
+        }
+
+        if (token.type === 'Pro' || token.type === 'N') {
+          ensureTokenIndex(token);
+          currentSubject = token;
+        }
+
+        if (token.type === 'V') {
+          ensureTokenIndex(token);
+          if (currentSubject) {
+            if (currentSubject.type === 'Pro') {
+              token.state.personne = currentSubject.state?.personne ?? token.state.personne ?? 3;
+              token.state.nombre = currentSubject.state?.nombre || token.state.nombre || 'sg';
+            } else if (currentSubject.type === 'N') {
+              token.state.personne = 3;
+              token.state.nombre = currentSubject.state?.nombre || token.state.nombre || 'sg';
+            }
+          }
+        }
+      }
+    }
+
     function applyDeterminantAgreement() {
       logicTokens.forEach((token, idx) => {
         if (token.type === 'D') {
@@ -838,10 +934,25 @@
       });
     }
 
+    function applyAdjectiveAgreement() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type === 'Adj') {
+          ensureTokenIndex(token);
+          const prev = logicTokens[idx - 1];
+          if (prev?.type === 'N') {
+            token.state.genre = prev.state?.genre;
+            token.state.nombre = prev.state?.nombre;
+          }
+        }
+      });
+    }
+
     function renderPhrase() {
       phraseContainer.innerHTML = '';
 
+      applyVerbAgreement();
       applyDeterminantAgreement();
+      applyAdjectiveAgreement();
 
       logicTokens.forEach((token) => {
         const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.kind === 'literal' && punctuationStickLeft.test(token.value));
