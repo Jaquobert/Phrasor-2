@@ -1494,81 +1494,36 @@
         brick.dataset.id = token.id;
         brick.textContent = token.kind === 'symbol' ? getSymbolicLabel(token) : token.value;
 
-        brick.addEventListener('click', () => {
-          activeTokenId = token.id;
-        });
-
-        if (token.type === 'V' && token.kind === 'symbol') {
-          let startX = null;
-          let lastStep = 0;
-          let gestureKind = null;
-
-          const STEP = 14;
-
-          brick.addEventListener('pointerdown', (event) => {
-            if (event.button !== 0) return;
-            startX = event.clientX;
-            lastStep = 0;
-            gestureKind = event.ctrlKey ? 'neg-type' : (event.shiftKey ? 'mode' : 'temps');
-            brick.setPointerCapture(event.pointerId);
-
-            if (event.ctrlKey && !event.shiftKey) {
-              // Track ctrl click for potential toggle if no move occurs.
-              gestureKind = 'neg-type';
-            }
-          });
-
-          const cycleValue = (order, current, delta) => {
-            const idx = order.indexOf(current);
-            const safeIdx = idx === -1 ? 0 : idx;
-            const next = ((safeIdx + delta) % order.length + order.length) % order.length;
-            return order[next];
-          };
-
-          brick.addEventListener('pointermove', (event) => {
-            if (startX === null) return;
-            const deltaX = event.clientX - startX;
-            const steps = Math.trunc(deltaX / STEP);
-            if (steps === lastStep) return;
-            const diff = steps - lastStep;
-            lastStep = steps;
-
+        brick.addEventListener('click', (event) => {
+          if (token.type === 'V' && token.kind === 'symbol') {
             const rt = token.state.runtime;
-            if (gestureKind === 'mode') {
-              const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
-              rt.mode = cycleValue(order, rt.mode, diff);
-            } else if (gestureKind === 'neg-type' && event.ctrlKey) {
-              updateVerbNegation(token, diff);
-            } else {
+
+            if (event.ctrlKey) {
+              rt.neg.active = !rt.neg.active;
+            } else if (event.shiftKey) {
               const order = ['present', 'passe', 'futur'];
-              rt.temps = cycleValue(order, rt.temps, diff);
+              const i = order.indexOf(rt.temps);
+              rt.temps = order[(i + 1) % order.length];
+            } else if (event.altKey) {
+              const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
+              const i = order.indexOf(rt.mode);
+              rt.mode = order[(i + 1) % order.length];
+            } else {
+              activeTokenId = token.id;
+              return;
             }
 
             applyAllAgreements();
             renderLogic();
             renderPhrase();
-          });
 
-          brick.addEventListener('pointerup', (event) => {
-            if (startX === null) return;
-            brick.releasePointerCapture(event.pointerId);
-            if (gestureKind === 'neg-type' && Math.abs(lastStep) === 0 && event.ctrlKey) {
-              token.state.runtime.neg.active = !token.state.runtime.neg.active;
-              applyAllAgreements();
-              renderLogic();
-              renderPhrase();
-            }
-            startX = null;
-            lastStep = 0;
-            gestureKind = null;
-          });
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
 
-          brick.addEventListener('pointercancel', () => {
-            startX = null;
-            lastStep = 0;
-            gestureKind = null;
-          });
-        }
+          activeTokenId = token.id;
+        });
 
         brick.addEventListener('mouseenter', () => {
           const id = brick.dataset.id;
