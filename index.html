@@ -415,6 +415,23 @@
       "X",
     ];
 
+    // MOCK MORPHOLOGIQUE NOMINAL
+    // Ce module simule les accords N / D / Adj sans correction linguistique complète.
+    // Il est destiné à valider la logique et l’UX avant intégration d’une vraie librairie.
+    const D_MOCK = {
+      masc: { sg: ["le", "un"], pl: ["les", "des"] },
+      fem: { sg: ["la", "une"], pl: ["les", "des"] },
+    };
+
+    const DETP_MOCK = {
+      mon: { masc: { sg: "mon", pl: "mes" }, fem: { sg: "ma", pl: "mes" } },
+      ton: { masc: { sg: "ton", pl: "tes" }, fem: { sg: "ta", pl: "tes" } },
+      son: { masc: { sg: "son", pl: "ses" }, fem: { sg: "sa", pl: "ses" } },
+      notre: { masc: { sg: "notre", pl: "nos" }, fem: { sg: "notre", pl: "nos" } },
+      votre: { masc: { sg: "votre", pl: "vos" }, fem: { sg: "votre", pl: "vos" } },
+      leur: { masc: { sg: "leur", pl: "leurs" }, fem: { sg: "leur", pl: "leurs" } },
+    };
+
     const NEGATION_TYPES = [
       "pas",
       "jamais",
@@ -636,6 +653,11 @@
       }
 
       if (tokenType === 'D') {
+        const source = { genre: entry.genre || 'x', nombre: entry.nombre || 'x' };
+        return { source, runtime: { ...source } };
+      }
+
+      if (tokenType === 'DetP' || tokenType === 'Quant') {
         const source = { genre: entry.genre || 'x', nombre: entry.nombre || 'x' };
         return { source, runtime: { ...source } };
       }
@@ -1050,7 +1072,72 @@
 
     function realizeToken(token) {
       const bank = banks[token.type] || [];
+      if (['N', 'Adj', 'D', 'DetP', 'Quant'].includes(token.type)) {
+        return realizeNominalMock(token, bank[token.index]?.value);
+      }
       return bank[token.index]?.value;
+    }
+
+    function findHeadNForToken(token) {
+      if (token.type === 'N') return token;
+      return logicTokens.find((candidate) => candidate.type === 'N'
+        && candidate.state?.GN
+        && (candidate.state.GN.determiners.includes(token)
+          || candidate.state.GN.adjectives.includes(token))) || null;
+    }
+
+    function realizeDeterminerMock(token, baseValue, headGenre, headNombre) {
+      const genreKey = headGenre === 'f' ? 'fem' : 'masc';
+      const nombreKey = headNombre === 'pl' ? 'pl' : 'sg';
+
+      if (token.type === 'D') {
+        const options = D_MOCK[genreKey]?.[nombreKey];
+        if (options?.length) {
+          return options.find((opt) => opt === baseValue) || options[0];
+        }
+        return baseValue;
+      }
+
+      if (token.type === 'DetP') {
+        const map = DETP_MOCK[baseValue?.toLowerCase()];
+        const realized = map?.[genreKey]?.[nombreKey];
+        return realized || baseValue;
+      }
+
+      if (token.type === 'Quant') {
+        if (nombreKey === 'pl' && baseValue && !/[sx]$/i.test(baseValue)) {
+          return `${baseValue}s`;
+        }
+        return baseValue;
+      }
+
+      return baseValue;
+    }
+
+    function realizeNominalMock(token, baseValue) {
+      const headN = findHeadNForToken(token);
+      const genre = headN?.state?.runtime?.genre || token.state?.runtime?.genre || 'x';
+      const nombre = headN?.state?.runtime?.nombre || token.state?.runtime?.nombre || 'sg';
+
+      if (token.type === 'N') {
+        if (nombre === 'pl' && baseValue && !/[sx]$/i.test(baseValue)) {
+          return `${baseValue}s`;
+        }
+        return baseValue;
+      }
+
+      if (token.type === 'Adj') {
+        let form = baseValue || '';
+        if (genre === 'f' && form && !/e$/i.test(form)) {
+          form += 'e';
+        }
+        if (nombre === 'pl' && form && !/s$/i.test(form)) {
+          form += 's';
+        }
+        return form || baseValue;
+      }
+
+      return realizeDeterminerMock(token, baseValue, genre, nombre);
     }
 
     function applyDebugTooltip(span, token) {
@@ -1067,7 +1154,7 @@
         tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${subjectPart}`;
       } else if (token.type === 'Pro') {
         tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${rt.genre ?? 'x'}`;
-      } else if (token.type === 'Adj' || token.type === 'N' || token.type === 'D') {
+      } else if (token.type === 'Adj' || token.type === 'N' || token.type === 'D' || token.type === 'DetP' || token.type === 'Quant') {
         tooltip += ` | ${rt.genre ?? 'x'} | ${rt.nombre ?? '?'}`;
       }
 
