@@ -624,7 +624,15 @@
 
       if (tokenType === 'N') {
         const source = { genre: entry.genre || 'x', nombre: 'sg' };
-        return { source, runtime: { ...source } };
+        return {
+          source,
+          runtime: { ...source },
+          GN: {
+            head: null,
+            determiners: [],
+            adjectives: [],
+          },
+        };
       }
 
       if (tokenType === 'D') {
@@ -932,6 +940,42 @@
       }
     }
 
+    // ARCHI — Le groupe nominal (GN) est une structure locale stockée dans l'état de chaque N.
+    // Le sujet reste défini uniquement par le N relié au verbe. Le GN sert uniquement aux accords secondaires (D, Adj).
+    function identifyGroupsNominals() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type !== 'N') return;
+
+        ensureTokenIndex(token);
+
+        token.state.GN = {
+          head: token,
+          determiners: [],
+          adjectives: [],
+        };
+
+        for (let i = idx - 1; i >= 0; i -= 1) {
+          const current = logicTokens[i];
+          if (isStrongPunctuationToken(current)) break;
+          if (current.type === 'V' || current.type === 'Prep' || current.type === 'N' || current.type === 'Pro') break;
+          if (current.type === 'D' || current.type === 'DetP' || current.type === 'Quant') {
+            ensureTokenIndex(current);
+            token.state.GN.determiners.unshift(current);
+          }
+        }
+
+        for (let i = idx + 1; i < logicTokens.length; i += 1) {
+          const current = logicTokens[i];
+          if (isStrongPunctuationToken(current)) break;
+          if (current.type === 'V' || current.type === 'Prep' || current.type === 'C' || current.type === 'N') break;
+          if (current.type === 'Adj') {
+            ensureTokenIndex(current);
+            token.state.GN.adjectives.push(current);
+          }
+        }
+      });
+    }
+
     function applyVerbAgreement() {
       identifySubjectsAndAssignVerbs();
     }
@@ -966,6 +1010,7 @@
 
     function applyAllAgreements() {
       applyVerbAgreement();
+      identifyGroupsNominals();
       applyDeterminantAgreement();
       applyAdjectiveAgreement();
     }
