@@ -298,6 +298,44 @@
       margin: 0 4px;
     }
 
+    @keyframes wordPulse {
+      0% {
+        color: #777;
+      }
+      50% {
+        color: #fff;
+      }
+      100% {
+        color: #777;
+      }
+    }
+
+    .word.link-hover {
+      animation: wordPulse 1.6s ease-in-out infinite;
+      text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+    }
+
+    .word.link-drag {
+      animation: wordPulse 0.9s ease-in-out infinite;
+      font-weight: 600;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+    }
+
+    .word.insertion-shadow {
+      margin-left: 12px;
+      margin-right: 12px;
+    }
+
+    .natural-drop-marker {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      background: #000;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+      vertical-align: middle;
+      margin: 0 4px;
+    }
+
     .token.dragging {
       transform: scale(1.08);
       box-shadow: 0 0 28px var(--matrix-glow);
@@ -1652,6 +1690,63 @@
       if (!token) return;
       logicTokens.push(token);
       input.value = '';
+      renderLogic();
+      renderPhrase();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const relevantKeys = ['t', 'T', 'm', 'M', 'n', 'N', 'p', 'P', 'g', 'G'];
+      if (!relevantKeys.includes(event.key)) return;
+
+      if (!activeTokenId) return;
+
+      const token = logicTokens.find(t => t.id === activeTokenId);
+      if (!token || !token.state || !token.state.runtime) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rt = token.state.runtime;
+
+      if (token.type === 'V') {
+        if (event.key.toLowerCase() === 't') {
+          const order = ['present', 'passe', 'futur'];
+          const i = order.indexOf(rt.temps);
+          rt.temps = order[(i + 1) % order.length];
+        }
+
+        if (event.key.toLowerCase() === 'm') {
+          const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
+          const i = order.indexOf(rt.mode);
+          rt.mode = order[(i + 1) % order.length];
+        }
+
+        if (event.key === 'n' && !event.shiftKey) {
+          rt.neg.active = !rt.neg.active;
+        }
+
+        if (event.key === 'N' && event.shiftKey) {
+          updateVerbNegation(token, 1);
+        }
+      }
+
+      if (token.type === 'N') {
+        if (event.key.toLowerCase() === 'p') {
+          rt.nombre = rt.nombre === 'sg' ? 'pl' : 'sg';
+        }
+
+        if (event.key.toLowerCase() === 'g') {
+          rt.genre = rt.genre === 'f' ? 'm' : 'f';
+        }
+
+        logicTokens.forEach((t) => {
+          if (t.type === 'D') {
+            ensureTokenIndex(t);
+          }
+        });
+      }
+
+      applyAllAgreements();
       renderLogic();
       renderPhrase();
     });
