@@ -208,10 +208,10 @@
       cursor: grab;
       user-select: none;
       transition:
-        transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-        box-shadow 0.2s ease,
-        background 0.2s ease,
-        opacity 0.18s ease;
+        transform 0.42s cubic-bezier(0.22, 1.2, 0.36, 1),
+        box-shadow 0.28s ease,
+        background 0.22s ease,
+        opacity 0.22s ease;
     }
 
     .token.literal {
@@ -252,12 +252,40 @@
     }
 
     .drop-marker {
-      width: 4px;
+      width: 1px;
       height: 64px;
-      background: linear-gradient(to bottom, transparent, var(--matrix-green), transparent);
-      box-shadow: 0 0 16px var(--matrix-glow);
+      background: rgba(57,255,20,0.85);
+      box-shadow: 0 0 6px var(--matrix-glow);
       opacity: 0.8;
       transition: opacity 0.2s ease;
+    }
+
+    .word.link-hover {
+      transform: scale(1.15) translateY(-4px);
+      font-weight: 600;
+      transition: transform 0.18s cubic-bezier(0.22, 1.2, 0.36, 1);
+      filter: drop-shadow(0 0 6px rgba(0,0,0,0.25));
+    }
+
+    .word.link-drag {
+      transform: scale(1.25) translateY(-6px);
+      filter: drop-shadow(0 0 10px rgba(57,255,20,0.6));
+      transition: transform 0.12s ease;
+    }
+
+    .word.insertion-shadow {
+      margin-left: 12px;
+      margin-right: 12px;
+      transition: margin 0.18s cubic-bezier(0.22, 1.2, 0.36, 1);
+    }
+
+    .natural-drop-marker {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      background: rgba(57,255,20,0.9);
+      vertical-align: middle;
+      margin: 0 8px;
     }
 
     .token.dragging {
@@ -332,7 +360,6 @@
       <li><strong>Rel</strong> : Relatif / pronom</li>
       <li><strong>Pro</strong> : Pronom personnel</li>
       <li><strong>Aux</strong> : Auxiliaire</li>
-      <li><strong>Neg</strong> : Négation</li>
       <li><strong>DetP</strong> : Déterminant possessif</li>
       <li><strong>Quant</strong> : Quantifieur</li>
       <li><strong>Int</strong> : Interrogatif</li>
@@ -340,7 +367,7 @@
       <li><strong>X</strong> : Néologisme</li>
       <li><em>Littéral</em> : ajoute ton propre texte via le champ gris.</li>
     </ul>
-    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Double-clique pour muter au hasard. La ponctuation se colle automatiquement au mot précédent.</p>
+    <p>Chaque symbole génère un mot aléatoire. Fais défiler, cliquer/glisser ou toucher/glisser un mot pour changer. Maj + clic sur un nom alterne singulier/pluriel. La ponctuation se colle automatiquement au mot précédent.</p>
   </div>
 
   <div class="palette" aria-label="Palette de briques">
@@ -356,7 +383,6 @@
         <div class="brick" draggable="true" data-symbol="Rel">Rel</div>
         <div class="brick" draggable="true" data-symbol="Pro">Pro</div>
         <div class="brick" draggable="true" data-symbol="Aux">Aux</div>
-        <div class="brick" draggable="true" data-symbol="Neg">Neg</div>
         <div class="brick" draggable="true" data-symbol="DetP">DetP</div>
         <div class="brick" draggable="true" data-symbol="Quant">Quant</div>
         <div class="brick" draggable="true" data-symbol="Int">Int</div>
@@ -392,7 +418,6 @@
       Rel: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1182666692&single=true&output=csv",
       Pro: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=279749913&single=true&output=csv",
       Aux: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1206471130&single=true&output=csv",
-      Neg: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1366092723&single=true&output=csv",
       DetP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1198095895&single=true&output=csv",
       Quant: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=159317568&single=true&output=csv",
       Int: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1656255545&single=true&output=csv",
@@ -411,12 +436,45 @@
       "Rel",
       "Pro",
       "Aux",
-      "Neg",
       "DetP",
       "Quant",
       "Int",
       "Excl",
       "X",
+    ];
+
+    // MOCK MORPHOLOGIQUE NOMINAL
+    // Ce module simule les accords N / D / Adj sans correction linguistique complète.
+    // Il est destiné à valider la logique et l’UX avant intégration d’une vraie librairie.
+    const D_MOCK = {
+      masc: { sg: ["le", "un"], pl: ["les", "des"] },
+      fem: { sg: ["la", "une"], pl: ["les", "des"] },
+    };
+
+    const DETP_MOCK = {
+      mon: { masc: { sg: "mon", pl: "mes" }, fem: { sg: "ma", pl: "mes" } },
+      ton: { masc: { sg: "ton", pl: "tes" }, fem: { sg: "ta", pl: "tes" } },
+      son: { masc: { sg: "son", pl: "ses" }, fem: { sg: "sa", pl: "ses" } },
+      notre: { masc: { sg: "notre", pl: "nos" }, fem: { sg: "notre", pl: "nos" } },
+      votre: { masc: { sg: "votre", pl: "vos" }, fem: { sg: "votre", pl: "vos" } },
+      leur: { masc: { sg: "leur", pl: "leurs" }, fem: { sg: "leur", pl: "leurs" } },
+    };
+
+    // MOCK DE CONJUGAISON VERBALE
+    // Ce module simule la conjugaison à partir de l’infinitif pour valider les états (personne, nombre, temps, mode, négation)
+    // avant intégration d’un vrai moteur morphologique.
+    const MOCK_PRESENT = {
+      sg: { 1: "e", 2: "es", 3: "e" },
+      pl: { 1: "ons", 2: "ez", 3: "ent" },
+    };
+
+    const NEGATION_TYPES = [
+      "pas",
+      "jamais",
+      "plus",
+      "rien",
+      "personne",
+      "guère",
     ];
 
     const fallbackBanks = {
@@ -481,10 +539,6 @@
         { id: "1", value: "être", tags: "auxiliaire", registre: "neutre", notes: "" },
         { id: "2", value: "avoir", tags: "auxiliaire", registre: "neutre", notes: "" },
       ],
-      Neg: [
-        { id: "1", value: "ne", position: "pré", tags: "négation", registre: "neutre", notes: "" },
-        { id: "2", value: "pas", position: "post", tags: "négation", registre: "neutre", notes: "" },
-      ],
       DetP: [
         { id: "1", value: "mon", personne: "1", nombre: "sg", tags: "possessif", registre: "neutre", notes: "" },
         { id: "2", value: "ton", personne: "2", nombre: "sg", tags: "possessif", registre: "neutre", notes: "" },
@@ -509,6 +563,8 @@
     };
 
     let banks = JSON.parse(JSON.stringify(fallbackBanks));
+
+    window.PHRASOR_DEBUG = true;
 
     const symbolKeys = [...categoryCodes];
     const punctuationStickLeft = /^[,.;:!?]/;
@@ -612,16 +668,95 @@
     let tokenIdCounter = 0;
     let currentDrag = null;
     let dropMarker = null;
+    let activeTokenId = null;
 
     const initialFormula = "D N V Adv , C D N Adj V !";
 
-    function createToken(value, type) {
-      const tokenType = type || (symbolKeys.includes(value) ? 'symbol' : 'literal');
-      const token = { id: tokenIdCounter++, type: tokenType, value };
-      if (tokenType === 'symbol') {
-        token.wordIndex = randomIndex(value);
+    function buildDefaultState(tokenType, index) {
+      const entry = (banks[tokenType] || [])[index] || {};
+      const emptyState = { source: {}, runtime: {} };
+
+      if (tokenType === 'N') {
+        const source = { genre: entry.genre || 'x', nombre: 'sg' };
+        return {
+          source,
+          runtime: { ...source },
+          GN: {
+            head: null,
+            determiners: [],
+            adjectives: [],
+          },
+        };
       }
-      return token;
+
+      if (tokenType === 'D') {
+        const source = { genre: entry.genre || 'x', nombre: entry.nombre || 'x' };
+        return { source, runtime: { ...source } };
+      }
+
+      if (tokenType === 'DetP' || tokenType === 'Quant') {
+        const source = { genre: entry.genre || 'x', nombre: entry.nombre || 'x' };
+        return { source, runtime: { ...source } };
+      }
+
+      if (tokenType === 'Pro') {
+        const source = {
+          personne: entry.personne ? Number(entry.personne) : 3,
+          nombre: entry.nombre || 'sg',
+          genre: entry.genre || 'x',
+        };
+        return { source, runtime: { ...source } };
+      }
+
+      if (tokenType === 'V') {
+        const source = { personne: 3, nombre: 'sg' };
+        return {
+          source,
+          runtime: {
+            ...source,
+            temps: 'present',
+            mode: 'indicatif',
+            subjectId: null,
+            neg: {
+              active: false,
+              type: 'pas',
+            },
+          },
+        };
+      }
+
+      if (tokenType === 'Adj') {
+        const source = { genre: 'x', nombre: 'sg' };
+        return { source, runtime: { ...source } };
+      }
+
+      return emptyState;
+    }
+
+    function createToken(value, forcedKind) {
+      const inferredKind = symbolKeys.includes(value) ? 'symbol' : 'literal';
+      const kind = forcedKind || inferredKind;
+
+      if (kind === 'Neg' || value === 'Neg') {
+        console.warn("[Phrasor] 'Neg' est désormais géré comme état du verbe, pas comme brique.");
+        return null;
+      }
+
+      const isSymbol = kind === 'symbol' && forcedKind !== 'literal';
+      if (!isSymbol) {
+        return { id: tokenIdCounter++, kind: 'literal', type: 'literal', value, state: {} };
+      }
+
+      const index = randomIndex(value);
+      const state = buildDefaultState(value, index);
+
+      return {
+        id: tokenIdCounter++,
+        kind: 'symbol',
+        type: value,
+        index,
+        state,
+      };
     }
 
     function randomIndex(symbol) {
@@ -632,7 +767,7 @@
 
     function buildInitialTokens() {
       const parts = initialFormula.trim().split(/\s+/);
-      logicTokens = parts.map(part => createToken(part));
+      logicTokens = parts.map(part => createToken(part)).filter(Boolean);
     }
 
     function removeToken(id) {
@@ -642,27 +777,101 @@
       }
     }
 
-    function ensureWordIndex(token) {
-      if (token.wordIndex === undefined || token.wordIndex === null) {
-        token.wordIndex = randomIndex(token.value);
+    function getCompatibleDeterminantIndices(currentToken) {
+      const currentIndex = logicTokens.findIndex(t => t.id === currentToken.id);
+      const nextToken = logicTokens[currentIndex + 1];
+      const baseBank = banks.D || [];
+      if (!nextToken || nextToken.type !== 'N') {
+        return baseBank.map((_, idx) => idx);
       }
-      const bank = banks[token.value] || [];
-      if (!bank.length) {
-        token.wordIndex = 0;
-        return token.wordIndex;
+
+      ensureTokenIndex(nextToken);
+
+      const genre = nextToken.state?.runtime?.genre;
+      const nombre = nextToken.state?.runtime?.nombre;
+
+      return baseBank
+        .map((entry, idx) => ({ entry, idx }))
+        .filter(({ entry }) => (entry.genre === genre || entry.genre === 'x')
+          && (entry.nombre === nombre || entry.nombre === 'x'))
+        .map(({ idx }) => idx);
+    }
+
+    function ensureTokenIndex(token) {
+      if (token.kind !== 'symbol') return null;
+
+      if (token.index === undefined || token.index === null) {
+        token.index = randomIndex(token.type);
       }
-      token.wordIndex = ((token.wordIndex % bank.length) + bank.length) % bank.length;
-      return token.wordIndex;
+
+      const bank = banks[token.type] || [];
+      const previousIndex = token.__stateIndex ?? token.index;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!bank.length) {
+          token.index = 0;
+        } else if (!compatible.length) {
+          token.index = ((token.index % bank.length) + bank.length) % bank.length;
+        } else if (!compatible.includes(token.index)) {
+          token.index = compatible[0];
+        }
+      } else if (!bank.length) {
+        token.index = 0;
+      } else {
+        token.index = ((token.index % bank.length) + bank.length) % bank.length;
+      }
+
+      const hasState = token.state && token.state.source && token.state.runtime;
+      if (!hasState || token.index !== previousIndex) {
+        token.state = buildDefaultState(token.type, token.index);
+      }
+
+      token.__stateIndex = token.index;
+      return token.index;
     }
 
     function adjustTokenIndex(token, delta) {
-      const bank = banks[token.value] || [];
+      if (token.kind !== 'symbol') return;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!compatible.length) return;
+        ensureTokenIndex(token);
+        const currentPos = compatible.indexOf(token.index);
+        const nextPos = ((currentPos + delta) % compatible.length + compatible.length) % compatible.length;
+        token.index = compatible[nextPos];
+        token.state = buildDefaultState(token.type, token.index);
+        return;
+      }
+
+      const bank = banks[token.type] || [];
       if (!bank.length) return;
-      token.wordIndex = ((token.wordIndex + delta) % bank.length + bank.length) % bank.length;
+      token.index = ((token.index + delta) % bank.length + bank.length) % bank.length;
+      token.state = buildDefaultState(token.type, token.index);
+      ensureTokenIndex(token);
     }
 
     function randomizeTokenWord(token) {
-      token.wordIndex = randomIndex(token.value);
+      if (token.kind !== 'symbol') return;
+
+      if (token.type === 'D') {
+        const compatible = getCompatibleDeterminantIndices(token);
+        if (!compatible.length) return;
+        const randomIdx = Math.floor(Math.random() * compatible.length);
+        token.index = compatible[randomIdx];
+        token.state = buildDefaultState(token.type, token.index);
+        ensureTokenIndex(token);
+        applyAllAgreements();
+        renderPhrase();
+        return;
+      }
+
+      token.index = randomIndex(token.type);
+      token.state = buildDefaultState(token.type, token.index);
+      ensureTokenIndex(token);
+      applyAllAgreements();
+      renderPhrase();
     }
 
     function addInteractions(span, token) {
@@ -674,13 +883,15 @@
         event.preventDefault();
         const direction = event.deltaY < 0 ? 1 : -1;
         adjustTokenIndex(token, direction);
-        updateSpanFromToken(span, token);
+        applyAllAgreements();
+        renderPhrase();
       });
 
       span.addEventListener('pointerdown', (event) => {
         span.setPointerCapture(event.pointerId);
         lastY = event.clientY;
         moved = false;
+        skipTap = false;
       });
 
       span.addEventListener('pointermove', (event) => {
@@ -690,7 +901,8 @@
         if (Math.abs(deltaY) >= threshold) {
           const steps = Math.trunc(deltaY / threshold);
           adjustTokenIndex(token, -steps);
-          updateSpanFromToken(span, token);
+          applyAllAgreements();
+          renderPhrase();
           lastY = event.clientY;
           moved = true;
         }
@@ -698,9 +910,15 @@
 
       span.addEventListener('pointerup', (event) => {
         span.releasePointerCapture(event.pointerId);
+        if (event.shiftKey) {
+          lastY = null;
+          skipTap = true;
+          return;
+        }
         if (!moved && !skipTap) {
           adjustTokenIndex(token, 1);
-          updateSpanFromToken(span, token);
+          applyAllAgreements();
+          renderPhrase();
         }
         lastY = null;
         skipTap = false;
@@ -710,34 +928,385 @@
         lastY = null;
       });
 
-      span.addEventListener('dblclick', (event) => {
-        event.preventDefault();
-        skipTap = true;
-        randomizeTokenWord(token);
-        updateSpanFromToken(span, token);
+      span.addEventListener('click', (event) => {
+        if (event.shiftKey && token.type === 'N') {
+          event.preventDefault();
+          skipTap = true;
+          ensureTokenIndex(token);
+          token.state.runtime.nombre = token.state.runtime.nombre === 'sg' ? 'pl' : 'sg';
+          logicTokens.forEach((t) => {
+            if (t.type === 'D') {
+              ensureTokenIndex(t);
+            }
+          });
+          applyAllAgreements();
+          renderPhrase();
+          return;
+        }
       });
     }
 
     function updateSpanFromToken(span, token) {
-      const bank = banks[token.value] || [];
-      const idx = ensureWordIndex(token);
+      const bank = banks[token.type] || [];
+      const idx = ensureTokenIndex(token);
       span.dataset.index = String(idx);
-      span.textContent = bank[idx]?.value || `[${token.value}]`;
+      span.textContent = realizeToken(token) || `[${token.type}]`;
+      applyDebugTooltip(span, token);
+    }
+
+    function isStrongPunctuationToken(token) {
+      if (!token || token.kind !== 'literal') return false;
+      return /[.!?;]/.test(token.value);
+    }
+
+    function identifySubjectsAndAssignVerbs() {
+      let currentSubject = null;
+
+      for (let i = 0; i < logicTokens.length; i += 1) {
+        const token = logicTokens[i];
+
+        if (isStrongPunctuationToken(token)) {
+          currentSubject = null;
+          continue;
+        }
+
+        if (token.type === 'Pro' || token.type === 'N') {
+          ensureTokenIndex(token);
+          currentSubject = token;
+          continue;
+        }
+
+        if (token.type === 'V') {
+          ensureTokenIndex(token);
+          const runtime = token.state?.runtime;
+          if (!runtime) continue;
+
+          if (currentSubject?.type === 'Pro') {
+            ensureTokenIndex(currentSubject);
+            runtime.personne = currentSubject.state?.runtime?.personne ?? runtime.personne ?? 3;
+            runtime.nombre = currentSubject.state?.runtime?.nombre || runtime.nombre || 'sg';
+            runtime.subjectId = currentSubject.id;
+          } else if (currentSubject?.type === 'N') {
+            ensureTokenIndex(currentSubject);
+            runtime.personne = 3;
+            runtime.nombre = currentSubject.state?.runtime?.nombre || runtime.nombre || 'sg';
+            runtime.subjectId = currentSubject.id;
+          } else {
+            runtime.personne = 3;
+            runtime.nombre = 'sg';
+            runtime.subjectId = null;
+          }
+        }
+      }
+    }
+
+    // ARCHI — Le groupe nominal (GN) est une structure locale stockée dans l'état de chaque N.
+    // Le sujet reste défini uniquement par le N relié au verbe. Le GN sert uniquement aux accords secondaires (D, Adj).
+    function identifyGroupsNominals() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type !== 'N') return;
+
+        ensureTokenIndex(token);
+
+        token.state.GN = {
+          head: token,
+          determiners: [],
+          adjectives: [],
+        };
+
+        for (let i = idx - 1; i >= 0; i -= 1) {
+          const current = logicTokens[i];
+          if (isStrongPunctuationToken(current)) break;
+          if (current.type === 'V' || current.type === 'Prep' || current.type === 'N' || current.type === 'Pro') break;
+          if (current.type === 'D' || current.type === 'DetP' || current.type === 'Quant') {
+            ensureTokenIndex(current);
+            token.state.GN.determiners.unshift(current);
+          }
+        }
+
+        for (let i = idx + 1; i < logicTokens.length; i += 1) {
+          const current = logicTokens[i];
+          if (isStrongPunctuationToken(current)) break;
+          if (current.type === 'V' || current.type === 'Prep' || current.type === 'C' || current.type === 'N') break;
+          if (current.type === 'Adj') {
+            ensureTokenIndex(current);
+            token.state.GN.adjectives.push(current);
+          }
+        }
+      });
+    }
+
+    function applyVerbAgreement() {
+      identifySubjectsAndAssignVerbs();
+    }
+
+    function applyDeterminantAgreement() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type === 'D') {
+          ensureTokenIndex(token);
+          const next = logicTokens[idx + 1];
+          if (next?.type === 'N') {
+            ensureTokenIndex(next);
+            token.state.runtime.genre = next.state?.runtime?.genre;
+            token.state.runtime.nombre = next.state?.runtime?.nombre;
+          }
+        }
+      });
+    }
+
+    function applyAdjectiveAgreement() {
+      logicTokens.forEach((token, idx) => {
+        if (token.type === 'Adj') {
+          ensureTokenIndex(token);
+          const prev = logicTokens[idx - 1];
+          if (prev?.type === 'N') {
+            ensureTokenIndex(prev);
+            token.state.runtime.genre = prev.state?.runtime?.genre;
+            token.state.runtime.nombre = prev.state?.runtime?.nombre;
+          }
+        }
+      });
+    }
+
+    function applyAllAgreements() {
+      applyVerbAgreement();
+      identifyGroupsNominals();
+      applyDeterminantAgreement();
+      applyAdjectiveAgreement();
+    }
+
+    /**
+     * Modifie le type de négation d'un verbe sans toucher au rendu.
+     * @param {Object} verbToken
+     * @param {number} delta
+     */
+    function updateVerbNegation(verbToken, delta) {
+      if (!verbToken || verbToken.type !== 'V') return;
+      const negState = verbToken.state?.runtime?.neg;
+      if (!negState) return;
+
+      const currentIndex = NEGATION_TYPES.indexOf(negState.type);
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+
+      if (typeof delta === 'number' && delta !== 0) {
+        let nextIndex = safeIndex + delta;
+        if (nextIndex < 0) nextIndex = NEGATION_TYPES.length - 1;
+        if (nextIndex >= NEGATION_TYPES.length) nextIndex = 0;
+        negState.type = NEGATION_TYPES[nextIndex];
+      }
+
+      // Pas de changement visuel ici. Le rendu (SysNegPre/SysNegPost) sera branché plus tard.
+    }
+
+    // NOTE ARCHI :
+    // À l'avenir, les interactions suivantes mettront à jour V.state.runtime.neg :
+    //
+    // - Ctrl + clic sur un verbe : toggle neg.active true/false
+    // - Ctrl + scroll sur un verbe : change neg.type via updateVerbNegation(V, delta)
+    // - Scroll sur un mot-projection de type "pas/jamais/..." déléguera vers updateVerbNegation
+    //
+    // Les mots "ne", "pas", "jamais", etc. seront des mots-système projetés
+    // à partir de cet état, pas des briques manipulables.
+
+    function realizeVerbMock(token) {
+      const bank = banks[token.type] || [];
+      const entry = bank[token.index] || {};
+      const infinitive = entry.value || '';
+      const runtime = token.state?.runtime || {};
+
+      const personne = runtime.personne ?? 3;
+      const nombre = runtime.nombre === 'pl' ? 'pl' : 'sg';
+      const temps = runtime.temps || 'present';
+      const mode = runtime.mode || 'indicatif';
+      const negState = runtime.neg || {};
+
+      const radical = (infinitive || '').replace(/(er|ir|re)$/i, '') || infinitive;
+
+      let form = infinitive;
+
+      if (temps === 'present') {
+        const ending = MOCK_PRESENT[nombre]?.[personne] || '';
+        form = `${radical}${ending}`;
+      } else if (temps === 'passe') {
+        form = `a ${radical}é`;
+      } else if (temps === 'futur') {
+        form = `${infinitive}a`;
+      }
+
+      if (mode === 'subjonctif') {
+        form = `[SUBJ] ${form}`;
+      } else if (mode === 'conditionnel') {
+        form = `[COND] ${form}`;
+      } else if (mode === 'imperatif') {
+        form = `[IMP] ${form}`;
+      }
+
+      if (negState.active) {
+        const negType = negState.type || 'pas';
+        form = `ne ${form} ${negType}`;
+      }
+
+      return form || infinitive;
+    }
+
+    function realizeToken(token) {
+      const bank = banks[token.type] || [];
+      if (token.type === 'V') {
+        return realizeVerbMock(token);
+      }
+      if (['N', 'Adj', 'D', 'DetP', 'Quant'].includes(token.type)) {
+        return realizeNominalMock(token, bank[token.index]?.value);
+      }
+      return bank[token.index]?.value;
+    }
+
+    function findHeadNForToken(token) {
+      if (token.type === 'N') return token;
+      return logicTokens.find((candidate) => candidate.type === 'N'
+        && candidate.state?.GN
+        && (candidate.state.GN.determiners.includes(token)
+          || candidate.state.GN.adjectives.includes(token))) || null;
+    }
+
+    function realizeDeterminerMock(token, baseValue, headGenre, headNombre) {
+      const genreKey = headGenre === 'f' ? 'fem' : 'masc';
+      const nombreKey = headNombre === 'pl' ? 'pl' : 'sg';
+
+      if (token.type === 'D') {
+        const options = D_MOCK[genreKey]?.[nombreKey];
+        if (options?.length) {
+          return options.find((opt) => opt === baseValue) || options[0];
+        }
+        return baseValue;
+      }
+
+      if (token.type === 'DetP') {
+        const map = DETP_MOCK[baseValue?.toLowerCase()];
+        const realized = map?.[genreKey]?.[nombreKey];
+        return realized || baseValue;
+      }
+
+      if (token.type === 'Quant') {
+        if (nombreKey === 'pl' && baseValue && !/[sx]$/i.test(baseValue)) {
+          return `${baseValue}s`;
+        }
+        return baseValue;
+      }
+
+      return baseValue;
+    }
+
+    function realizeNominalMock(token, baseValue) {
+      const headN = findHeadNForToken(token);
+      const genre = headN?.state?.runtime?.genre || token.state?.runtime?.genre || 'x';
+      const nombre = headN?.state?.runtime?.nombre || token.state?.runtime?.nombre || 'sg';
+
+      if (token.type === 'N') {
+        if (nombre === 'pl' && baseValue && !/[sx]$/i.test(baseValue)) {
+          return `${baseValue}s`;
+        }
+        return baseValue;
+      }
+
+      if (token.type === 'Adj') {
+        let form = baseValue || '';
+        if (genre === 'f' && form && !/e$/i.test(form)) {
+          form += 'e';
+        }
+        if (nombre === 'pl' && form && !/s$/i.test(form)) {
+          form += 's';
+        }
+        return form || baseValue;
+      }
+
+      return realizeDeterminerMock(token, baseValue, genre, nombre);
+    }
+
+    function applyDebugTooltip(span, token) {
+      if (!window.PHRASOR_DEBUG || token.kind !== 'symbol') {
+        span.removeAttribute('title');
+        return;
+      }
+
+      const rt = token.state?.runtime || {};
+      let tooltip = token.type;
+
+      if (token.type === 'V') {
+        const subjectPart = rt.subjectId !== null && rt.subjectId !== undefined ? `token:${rt.subjectId}` : 'none';
+        tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${subjectPart}`;
+      } else if (token.type === 'Pro') {
+        tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${rt.genre ?? 'x'}`;
+      } else if (token.type === 'Adj' || token.type === 'N' || token.type === 'D' || token.type === 'DetP' || token.type === 'Quant') {
+        tooltip += ` | ${rt.genre ?? 'x'} | ${rt.nombre ?? '?'}`;
+      }
+
+      span.title = tooltip;
+    }
+
+    function getSymbolicLabel(token) {
+      let label = token.type;
+
+      const rt = token.state?.runtime || {};
+
+      if (token.type === 'N') {
+        if (rt.genre === 'f') label += 'ᶠ';
+        if (rt.nombre === 'pl') label += 'ₚ';
+      }
+
+      if (token.type === 'Adj') {
+        if (rt.genre === 'f') label += 'ᶠ';
+        if (rt.nombre === 'pl') label += 'ₚ';
+      }
+
+      if (['D', 'DetP', 'Quant'].includes(token.type)) {
+        if (rt.nombre === 'pl') label += 'ₚ';
+      }
+
+      if (token.type === 'V') {
+        const tempsMap = {
+          present: 'ᵖʳᵉ',
+          passe: 'ᵖᵃˢ',
+          futur: 'ᶠᵘᵗ',
+        };
+
+        const modeMap = {
+          indicatif: '',
+          subjonctif: 'ˢᵘᵇ',
+          conditionnel: 'ᶜᵒⁿᵈ',
+          imperatif: 'ᶦᵐᵖ',
+        };
+
+        if (rt.temps && tempsMap[rt.temps]) {
+          label += tempsMap[rt.temps];
+        }
+
+        if (rt.mode && modeMap[rt.mode]) {
+          label += modeMap[rt.mode];
+        }
+
+        if (rt.neg?.active) {
+          label = `¬${label}`;
+        }
+      }
+
+      return label;
     }
 
     function renderPhrase() {
       phraseContainer.innerHTML = '';
 
-      logicTokens.forEach((token, idx) => {
-        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.type === 'literal' && punctuationStickLeft.test(token.value));
+      applyAllAgreements();
+
+      logicTokens.forEach((token) => {
+        const shouldAddSpace = phraseContainer.childNodes.length > 0 && !(token.kind === 'literal' && punctuationStickLeft.test(token.value));
         if (shouldAddSpace) {
           phraseContainer.appendChild(document.createTextNode(' '));
         }
 
-        if (token.type === 'symbol') {
+        if (token.kind === 'symbol') {
           const span = document.createElement('span');
           span.className = 'word';
-          span.dataset.symbol = token.value;
+          span.dataset.symbol = token.type;
           span.dataset.tokenId = String(token.id);
           updateSpanFromToken(span, token);
           addInteractions(span, token);
@@ -748,6 +1317,8 @@
           phraseContainer.appendChild(text);
         }
       });
+
+      window.PHRASOR_STATE = logicTokens;
     }
 
     function renderLogic() {
@@ -755,10 +1326,26 @@
 
       logicTokens.forEach((token) => {
         const brick = document.createElement('div');
-        brick.className = `token ${token.type === 'literal' ? 'literal' : 'symbol'}`;
+        brick.className = `token ${token.kind === 'literal' ? 'literal' : 'symbol'}`;
         brick.draggable = true;
         brick.dataset.id = token.id;
-        brick.textContent = token.value;
+        brick.textContent = token.kind === 'symbol' ? getSymbolicLabel(token) : token.value;
+
+        brick.addEventListener('click', () => {
+          activeTokenId = token.id;
+        });
+
+        brick.addEventListener('mouseenter', () => {
+          const id = brick.dataset.id;
+          const word = document.querySelector(`.word[data-token-id="${id}"]`);
+          if (word) word.classList.add('link-hover');
+        });
+
+        brick.addEventListener('mouseleave', () => {
+          const id = brick.dataset.id;
+          const word = document.querySelector(`.word[data-token-id="${id}"]`);
+          if (word) word.classList.remove('link-hover');
+        });
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
@@ -778,12 +1365,16 @@
 
         brick.addEventListener('dragstart', (event) => {
           currentDrag = { type: 'token', id: token.id };
+          const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
+          if (word) word.classList.add('link-drag');
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('text/plain', 'token');
           brick.classList.add('dragging');
         });
 
         brick.addEventListener('dragend', () => {
+          const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
+          if (word) word.classList.remove('link-drag');
           brick.classList.remove('dragging');
           clearMarker();
         });
@@ -799,6 +1390,15 @@
     }
 
     function clearMarker() {
+      document.querySelectorAll('.word').forEach((w) => {
+        w.classList.remove('insertion-shadow');
+      });
+
+      const naturalMarker = document.getElementById('natural-drop-marker');
+      if (naturalMarker) {
+        naturalMarker.remove();
+      }
+
       if (dropMarker && dropMarker.parentElement) {
         dropMarker.parentElement.removeChild(dropMarker);
       }
@@ -809,6 +1409,11 @@
     function getDropIndex(event) {
       const children = Array.from(formulaRow.children).filter((el) => el !== dropMarker);
       const x = event.clientX;
+      const rowRect = formulaRow.getBoundingClientRect();
+
+      if (x < rowRect.left) return 0;
+      if (x > rowRect.right) return logicTokens.length;
+
       for (let i = 0; i < children.length; i += 1) {
         const rect = children[i].getBoundingClientRect();
         if (x < rect.left + rect.width / 2) {
@@ -841,6 +1446,24 @@
         formulaRow.insertBefore(dropMarker, children[index]);
       }
       applyShiftEffects(index);
+
+      const words = Array.from(document.querySelectorAll('.word'));
+      words.forEach((w, i) => {
+        w.classList.remove('insertion-shadow');
+        if (i >= index) {
+          w.classList.add('insertion-shadow');
+        }
+      });
+
+      const naturalMarker = document.createElement('span');
+      naturalMarker.className = 'natural-drop-marker';
+      naturalMarker.id = 'natural-drop-marker';
+
+      if (index >= words.length) {
+        phraseContainer.appendChild(naturalMarker);
+      } else {
+        phraseContainer.insertBefore(naturalMarker, words[index]);
+      }
     }
 
     function handlePaletteDragStart(event) {
@@ -870,23 +1493,44 @@
     formulaRow.addEventListener('drop', (event) => {
       event.preventDefault();
       const index = getDropIndex(event);
+      let finalIndex = index;
 
       if (currentDrag?.type === 'palette') {
         const token = createToken(currentDrag.value, 'symbol');
+        if (!token) {
+          clearMarker();
+          currentDrag = null;
+          return;
+        }
         logicTokens.splice(index, 0, token);
+        finalIndex = index;
       } else if (currentDrag?.type === 'token') {
         const fromIdx = logicTokens.findIndex(t => t.id === currentDrag.id);
         if (fromIdx !== -1) {
           const [moved] = logicTokens.splice(fromIdx, 1);
           const targetIndex = fromIdx < index ? index - 1 : index;
           logicTokens.splice(targetIndex, 0, moved);
+          finalIndex = targetIndex;
         }
       }
 
       clearMarker();
       currentDrag = null;
+      applyAllAgreements();
       renderLogic();
       renderPhrase();
+
+      requestAnimationFrame(() => {
+        const safeIndex = Math.min(finalIndex, logicTokens.length - 1);
+        const token = logicTokens[safeIndex];
+        if (!token) return;
+
+        const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
+        if (word) {
+          word.classList.add('link-drag');
+          setTimeout(() => word.classList.remove('link-drag'), 160);
+        }
+      });
     });
 
     literalForm.addEventListener('submit', (event) => {
@@ -895,10 +1539,79 @@
       const value = input.value;
       if (!value) return;
       const token = createToken(value, 'literal');
+      if (!token) return;
       logicTokens.push(token);
       input.value = '';
       renderLogic();
       renderPhrase();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!activeTokenId) return;
+
+      const token = logicTokens.find((t) => t.id === activeTokenId);
+      if (!token || token.kind !== 'symbol') return;
+
+      const rt = token.state?.runtime;
+      if (!rt) return;
+
+      let changed = false;
+
+      if (token.type === 'V') {
+        if (event.key === 'T') {
+          const order = ['present', 'passe', 'futur'];
+          const i = order.indexOf(rt.temps);
+          rt.temps = order[(i + 1) % order.length];
+          changed = true;
+          event.preventDefault();
+        }
+
+        if (event.key === 'M') {
+          const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
+          const i = order.indexOf(rt.mode);
+          rt.mode = order[(i + 1) % order.length];
+          changed = true;
+          event.preventDefault();
+        }
+
+        if (event.key === 'n' && !event.shiftKey) {
+          rt.neg.active = !rt.neg.active;
+          changed = true;
+          event.preventDefault();
+        }
+
+        if (event.key === 'N' && event.shiftKey) {
+          updateVerbNegation(token, 1);
+          changed = true;
+          event.preventDefault();
+        }
+      }
+
+      if (token.type === 'N') {
+        if (event.key === 'P') {
+          rt.nombre = rt.nombre === 'sg' ? 'pl' : 'sg';
+          changed = true;
+          logicTokens.forEach((t) => {
+            if (t.type === 'D') ensureTokenIndex(t);
+          });
+          event.preventDefault();
+        }
+
+        if (event.key === 'G') {
+          rt.genre = rt.genre === 'f' ? 'm' : 'f';
+          changed = true;
+          logicTokens.forEach((t) => {
+            if (t.type === 'D') ensureTokenIndex(t);
+          });
+          event.preventDefault();
+        }
+      }
+
+      if (changed) {
+        applyAllAgreements();
+        renderLogic();
+        renderPhrase();
+      }
     });
 
     helpButton.addEventListener('click', () => {
