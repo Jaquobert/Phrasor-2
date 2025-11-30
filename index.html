@@ -260,6 +260,34 @@
       transition: opacity 0.2s ease;
     }
 
+    .word.link-hover {
+      transform: scale(1.15) translateY(-4px);
+      font-weight: 600;
+      transition: transform 0.18s cubic-bezier(0.22, 1.2, 0.36, 1);
+      filter: drop-shadow(0 0 6px rgba(0,0,0,0.25));
+    }
+
+    .word.link-drag {
+      transform: scale(1.25) translateY(-6px);
+      filter: drop-shadow(0 0 10px rgba(57,255,20,0.6));
+      transition: transform 0.12s ease;
+    }
+
+    .word.insertion-shadow {
+      margin-left: 12px;
+      margin-right: 12px;
+      transition: margin 0.18s cubic-bezier(0.22, 1.2, 0.36, 1);
+    }
+
+    .natural-drop-marker {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      background: rgba(57,255,20,0.9);
+      vertical-align: middle;
+      margin: 0 8px;
+    }
+
     .token.dragging {
       transform: scale(1.08);
       box-shadow: 0 0 28px var(--matrix-glow);
@@ -1253,6 +1281,18 @@
         brick.dataset.id = token.id;
         brick.textContent = token.kind === 'symbol' ? token.type : token.value;
 
+        brick.addEventListener('mouseenter', () => {
+          const id = brick.dataset.id;
+          const word = document.querySelector(`.word[data-token-id="${id}"]`);
+          if (word) word.classList.add('link-hover');
+        });
+
+        brick.addEventListener('mouseleave', () => {
+          const id = brick.dataset.id;
+          const word = document.querySelector(`.word[data-token-id="${id}"]`);
+          if (word) word.classList.remove('link-hover');
+        });
+
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
         deleteBtn.type = 'button';
@@ -1271,12 +1311,16 @@
 
         brick.addEventListener('dragstart', (event) => {
           currentDrag = { type: 'token', id: token.id };
+          const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
+          if (word) word.classList.add('link-drag');
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('text/plain', 'token');
           brick.classList.add('dragging');
         });
 
         brick.addEventListener('dragend', () => {
+          const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
+          if (word) word.classList.remove('link-drag');
           brick.classList.remove('dragging');
           clearMarker();
         });
@@ -1292,6 +1336,15 @@
     }
 
     function clearMarker() {
+      document.querySelectorAll('.word').forEach((w) => {
+        w.classList.remove('insertion-shadow');
+      });
+
+      const naturalMarker = document.getElementById('natural-drop-marker');
+      if (naturalMarker) {
+        naturalMarker.remove();
+      }
+
       if (dropMarker && dropMarker.parentElement) {
         dropMarker.parentElement.removeChild(dropMarker);
       }
@@ -1339,6 +1392,24 @@
         formulaRow.insertBefore(dropMarker, children[index]);
       }
       applyShiftEffects(index);
+
+      const words = Array.from(document.querySelectorAll('.word'));
+      words.forEach((w, i) => {
+        w.classList.remove('insertion-shadow');
+        if (i >= index) {
+          w.classList.add('insertion-shadow');
+        }
+      });
+
+      const naturalMarker = document.createElement('span');
+      naturalMarker.className = 'natural-drop-marker';
+      naturalMarker.id = 'natural-drop-marker';
+
+      if (index >= words.length) {
+        phraseContainer.appendChild(naturalMarker);
+      } else {
+        phraseContainer.insertBefore(naturalMarker, words[index]);
+      }
     }
 
     function handlePaletteDragStart(event) {
@@ -1368,6 +1439,7 @@
     formulaRow.addEventListener('drop', (event) => {
       event.preventDefault();
       const index = getDropIndex(event);
+      let finalIndex = index;
 
       if (currentDrag?.type === 'palette') {
         const token = createToken(currentDrag.value, 'symbol');
@@ -1377,12 +1449,14 @@
           return;
         }
         logicTokens.splice(index, 0, token);
+        finalIndex = index;
       } else if (currentDrag?.type === 'token') {
         const fromIdx = logicTokens.findIndex(t => t.id === currentDrag.id);
         if (fromIdx !== -1) {
           const [moved] = logicTokens.splice(fromIdx, 1);
           const targetIndex = fromIdx < index ? index - 1 : index;
           logicTokens.splice(targetIndex, 0, moved);
+          finalIndex = targetIndex;
         }
       }
 
@@ -1391,6 +1465,18 @@
       applyAllAgreements();
       renderLogic();
       renderPhrase();
+
+      requestAnimationFrame(() => {
+        const safeIndex = Math.min(finalIndex, logicTokens.length - 1);
+        const token = logicTokens[safeIndex];
+        if (!token) return;
+
+        const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
+        if (word) {
+          word.classList.add('link-drag');
+          setTimeout(() => word.classList.remove('link-drag'), 160);
+        }
+      });
     });
 
     literalForm.addEventListener('submit', (event) => {
