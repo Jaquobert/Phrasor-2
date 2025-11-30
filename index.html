@@ -260,17 +260,25 @@
       transition: opacity 0.2s ease;
     }
 
+    @keyframes wordPulse {
+      0% {
+        color: #555;
+      }
+      50% {
+        color: #000;
+      }
+      100% {
+        color: #555;
+      }
+    }
+
     .word.link-hover {
-      transform: scale(1.15) translateY(-4px);
-      font-weight: 600;
-      transition: transform 0.18s cubic-bezier(0.22, 1.2, 0.36, 1);
-      filter: drop-shadow(0 0 6px rgba(0,0,0,0.25));
+      animation: wordPulse 1.6s ease-in-out infinite;
     }
 
     .word.link-drag {
-      transform: scale(1.25) translateY(-6px);
-      filter: drop-shadow(0 0 10px rgba(57,255,20,0.6));
-      transition: transform 0.12s ease;
+      animation: wordPulse 0.9s ease-in-out infinite;
+      font-weight: 600;
     }
 
     .word.insertion-shadow {
@@ -283,9 +291,10 @@
       display: inline-block;
       width: 2px;
       height: 1.2em;
-      background: rgba(57,255,20,0.9);
+      background: #000;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
       vertical-align: middle;
-      margin: 0 8px;
+      margin: 0 4px;
     }
 
     .token.dragging {
@@ -1391,7 +1400,7 @@
 
     function clearMarker() {
       document.querySelectorAll('.word').forEach((w) => {
-        w.classList.remove('insertion-shadow');
+        w.classList.remove('insertion-shadow', 'link-hover', 'link-drag');
       });
 
       const naturalMarker = document.getElementById('natural-drop-marker');
@@ -1448,12 +1457,14 @@
       applyShiftEffects(index);
 
       const words = Array.from(document.querySelectorAll('.word'));
-      words.forEach((w, i) => {
+      words.forEach((w) => {
         w.classList.remove('insertion-shadow');
-        if (i >= index) {
-          w.classList.add('insertion-shadow');
-        }
       });
+
+      const targetWord = words[index];
+      if (targetWord) {
+        targetWord.classList.add('insertion-shadow');
+      }
 
       const naturalMarker = document.createElement('span');
       naturalMarker.className = 'natural-drop-marker';
@@ -1549,69 +1560,55 @@
     document.addEventListener('keydown', (event) => {
       if (!activeTokenId) return;
 
-      const token = logicTokens.find((t) => t.id === activeTokenId);
-      if (!token || token.kind !== 'symbol') return;
+      const token = logicTokens.find(t => t.id === activeTokenId);
+      if (!token) return;
+
+      // Neutralise le navigateur
+      event.preventDefault();
+      event.stopPropagation();
 
       const rt = token.state?.runtime;
       if (!rt) return;
 
-      let changed = false;
-
+      // VERBES
       if (token.type === 'V') {
-        if (event.key === 'T') {
+
+        if (event.key.toLowerCase() === 't') {
           const order = ['present', 'passe', 'futur'];
           const i = order.indexOf(rt.temps);
           rt.temps = order[(i + 1) % order.length];
-          changed = true;
-          event.preventDefault();
         }
 
-        if (event.key === 'M') {
+        if (event.key.toLowerCase() === 'm') {
           const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
           const i = order.indexOf(rt.mode);
           rt.mode = order[(i + 1) % order.length];
-          changed = true;
-          event.preventDefault();
         }
 
         if (event.key === 'n' && !event.shiftKey) {
           rt.neg.active = !rt.neg.active;
-          changed = true;
-          event.preventDefault();
         }
 
         if (event.key === 'N' && event.shiftKey) {
           updateVerbNegation(token, 1);
-          changed = true;
-          event.preventDefault();
         }
       }
 
+      // NOMS
       if (token.type === 'N') {
-        if (event.key === 'P') {
+
+        if (event.key.toLowerCase() === 'p') {
           rt.nombre = rt.nombre === 'sg' ? 'pl' : 'sg';
-          changed = true;
-          logicTokens.forEach((t) => {
-            if (t.type === 'D') ensureTokenIndex(t);
-          });
-          event.preventDefault();
         }
 
-        if (event.key === 'G') {
+        if (event.key.toLowerCase() === 'g') {
           rt.genre = rt.genre === 'f' ? 'm' : 'f';
-          changed = true;
-          logicTokens.forEach((t) => {
-            if (t.type === 'D') ensureTokenIndex(t);
-          });
-          event.preventDefault();
         }
       }
 
-      if (changed) {
-        applyAllAgreements();
-        renderLogic();
-        renderPhrase();
-      }
+      applyAllAgreements();
+      renderLogic();
+      renderPhrase();
     });
 
     helpButton.addEventListener('click', () => {
