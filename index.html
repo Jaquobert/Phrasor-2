@@ -332,7 +332,6 @@
       <li><strong>Rel</strong> : Relatif / pronom</li>
       <li><strong>Pro</strong> : Pronom personnel</li>
       <li><strong>Aux</strong> : Auxiliaire</li>
-      <li><strong>Neg</strong> : Négation</li>
       <li><strong>DetP</strong> : Déterminant possessif</li>
       <li><strong>Quant</strong> : Quantifieur</li>
       <li><strong>Int</strong> : Interrogatif</li>
@@ -356,7 +355,6 @@
         <div class="brick" draggable="true" data-symbol="Rel">Rel</div>
         <div class="brick" draggable="true" data-symbol="Pro">Pro</div>
         <div class="brick" draggable="true" data-symbol="Aux">Aux</div>
-        <div class="brick" draggable="true" data-symbol="Neg">Neg</div>
         <div class="brick" draggable="true" data-symbol="DetP">DetP</div>
         <div class="brick" draggable="true" data-symbol="Quant">Quant</div>
         <div class="brick" draggable="true" data-symbol="Int">Int</div>
@@ -392,7 +390,6 @@
       Rel: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1182666692&single=true&output=csv",
       Pro: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=279749913&single=true&output=csv",
       Aux: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1206471130&single=true&output=csv",
-      Neg: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1366092723&single=true&output=csv",
       DetP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1198095895&single=true&output=csv",
       Quant: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=159317568&single=true&output=csv",
       Int: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=1656255545&single=true&output=csv",
@@ -411,12 +408,20 @@
       "Rel",
       "Pro",
       "Aux",
-      "Neg",
       "DetP",
       "Quant",
       "Int",
       "Excl",
       "X",
+    ];
+
+    const NEGATION_TYPES = [
+      "pas",
+      "jamais",
+      "plus",
+      "rien",
+      "personne",
+      "guère",
     ];
 
     const fallbackBanks = {
@@ -480,10 +485,6 @@
       Aux: [
         { id: "1", value: "être", tags: "auxiliaire", registre: "neutre", notes: "" },
         { id: "2", value: "avoir", tags: "auxiliaire", registre: "neutre", notes: "" },
-      ],
-      Neg: [
-        { id: "1", value: "ne", position: "pré", tags: "négation", registre: "neutre", notes: "" },
-        { id: "2", value: "pas", position: "post", tags: "négation", registre: "neutre", notes: "" },
       ],
       DetP: [
         { id: "1", value: "mon", personne: "1", nombre: "sg", tags: "possessif", registre: "neutre", notes: "" },
@@ -642,7 +643,17 @@
 
       if (tokenType === 'V') {
         const source = { personne: 3, nombre: 'sg' };
-        return { source, runtime: { ...source, temps: 'present' } };
+        return {
+          source,
+          runtime: {
+            ...source,
+            temps: 'present',
+            neg: {
+              active: false,
+              type: 'pas',
+            },
+          },
+        };
       }
 
       if (tokenType === 'Adj') {
@@ -654,7 +665,15 @@
     }
 
     function createToken(value, forcedKind) {
-      const isSymbol = (forcedKind || symbolKeys.includes(value)) && forcedKind !== 'literal';
+      const inferredKind = symbolKeys.includes(value) ? 'symbol' : 'literal';
+      const kind = forcedKind || inferredKind;
+
+      if (kind === 'Neg' || value === 'Neg') {
+        console.warn("[Phrasor] 'Neg' est désormais géré comme état du verbe, pas comme brique.");
+        return null;
+      }
+
+      const isSymbol = kind === 'symbol' && forcedKind !== 'literal';
       if (!isSymbol) {
         return { id: tokenIdCounter++, kind: 'literal', type: 'literal', value, state: {} };
       }
@@ -679,7 +698,7 @@
 
     function buildInitialTokens() {
       const parts = initialFormula.trim().split(/\s+/);
-      logicTokens = parts.map(part => createToken(part));
+      logicTokens = parts.map(part => createToken(part)).filter(Boolean);
     }
 
     function removeToken(id) {
@@ -939,6 +958,39 @@
       applyAdjectiveAgreement();
     }
 
+    /**
+     * Modifie le type de négation d'un verbe sans toucher au rendu.
+     * @param {Object} verbToken
+     * @param {number} delta
+     */
+    function updateVerbNegation(verbToken, delta) {
+      if (!verbToken || verbToken.type !== 'V') return;
+      const negState = verbToken.state?.runtime?.neg;
+      if (!negState) return;
+
+      const currentIndex = NEGATION_TYPES.indexOf(negState.type);
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+
+      if (typeof delta === 'number' && delta !== 0) {
+        let nextIndex = safeIndex + delta;
+        if (nextIndex < 0) nextIndex = NEGATION_TYPES.length - 1;
+        if (nextIndex >= NEGATION_TYPES.length) nextIndex = 0;
+        negState.type = NEGATION_TYPES[nextIndex];
+      }
+
+      // Pas de changement visuel ici. Le rendu (SysNegPre/SysNegPost) sera branché plus tard.
+    }
+
+    // NOTE ARCHI :
+    // À l'avenir, les interactions suivantes mettront à jour V.state.runtime.neg :
+    //
+    // - Ctrl + clic sur un verbe : toggle neg.active true/false
+    // - Ctrl + scroll sur un verbe : change neg.type via updateVerbNegation(V, delta)
+    // - Scroll sur un mot-projection de type "pas/jamais/..." déléguera vers updateVerbNegation
+    //
+    // Les mots "ne", "pas", "jamais", etc. seront des mots-système projetés
+    // à partir de cet état, pas des briques manipulables.
+
     function realizeToken(token) {
       const bank = banks[token.type] || [];
       return bank[token.index]?.value;
@@ -1121,6 +1173,11 @@
 
       if (currentDrag?.type === 'palette') {
         const token = createToken(currentDrag.value, 'symbol');
+        if (!token) {
+          clearMarker();
+          currentDrag = null;
+          return;
+        }
         logicTokens.splice(index, 0, token);
       } else if (currentDrag?.type === 'token') {
         const fromIdx = logicTokens.findIndex(t => t.id === currentDrag.id);
@@ -1144,6 +1201,7 @@
       const value = input.value;
       if (!value) return;
       const token = createToken(value, 'literal');
+      if (!token) return;
       logicTokens.push(token);
       input.value = '';
       renderLogic();
