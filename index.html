@@ -260,70 +260,18 @@
       transition: opacity 0.35s ease;
     }
 
-    @keyframes wordPulse {
-      0% {
-        color: #777;
-      }
-      50% {
-        color: #fff;
-      }
-      100% {
-        color: #777;
-      }
-    }
-
     .word.link-hover {
-      animation: wordPulse 1.6s ease-in-out infinite;
-      text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+      color: #666 !important;
     }
 
     .word.link-drag {
-      animation: wordPulse 0.9s ease-in-out infinite;
+      color: #444 !important;
       font-weight: 600;
-      text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
     }
 
     .word.insertion-shadow {
       margin-left: 6px;
       margin-right: 6px;
-    }
-
-    .natural-drop-marker {
-      display: inline-block;
-      width: 2px;
-      height: 1.2em;
-      background: #000;
-      box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
-      vertical-align: middle;
-      margin: 0 4px;
-    }
-
-    @keyframes wordPulse {
-      0% {
-        color: #777;
-      }
-      50% {
-        color: #fff;
-      }
-      100% {
-        color: #777;
-      }
-    }
-
-    .word.link-hover {
-      animation: wordPulse 1.6s ease-in-out infinite;
-      text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
-    }
-
-    .word.link-drag {
-      animation: wordPulse 0.9s ease-in-out infinite;
-      font-weight: 600;
-      text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
-    }
-
-    .word.insertion-shadow {
-      margin-left: 12px;
-      margin-right: 12px;
     }
 
     .natural-drop-marker {
@@ -379,7 +327,7 @@
 
     .word {
       cursor: ns-resize;
-      transition: color 0.2s ease, background 0.2s ease, margin 0.5s cubic-bezier(0.22, 1.2, 0.36, 1);
+      transition: color 0.2s ease, background 0.2s ease, margin 0.55s cubic-bezier(0.22, 1.2, 0.36, 1);
       padding: 2px 4px;
       border-radius: 4px;
       white-space: pre;
@@ -872,11 +820,29 @@
 
       const hasState = token.state && token.state.source && token.state.runtime;
       const entry = bank[token.index] || {};
+      const preservedVerbRuntime = token.type === 'V' && token.state?.runtime
+        ? JSON.parse(JSON.stringify(token.state.runtime))
+        : null;
 
       if (token.type === 'N' && entry && entry.genre && token.state?.source?.genre !== entry.genre) {
         token.state = buildDefaultState(token.type, token.index);
-      } else if (!hasState || token.index !== previousIndex) {
+      } else if (!hasState) {
         token.state = buildDefaultState(token.type, token.index);
+      } else if (token.type !== 'V' && token.index !== previousIndex) {
+        token.state = buildDefaultState(token.type, token.index);
+      } else if (token.type === 'V' && token.index !== previousIndex) {
+        token.state = buildDefaultState(token.type, token.index);
+      }
+
+      if (token.type === 'V' && preservedVerbRuntime) {
+        token.state.runtime = {
+          ...token.state.runtime,
+          ...preservedVerbRuntime,
+          neg: {
+            ...token.state.runtime.neg,
+            ...(preservedVerbRuntime.neg || {}),
+          },
+        };
       }
 
       token.__stateIndex = token.index;
@@ -886,6 +852,10 @@
     function adjustTokenIndex(token, delta) {
       if (token.kind !== 'symbol') return;
 
+      const preservedVerbRuntime = token.type === 'V' && token.state?.runtime
+        ? JSON.parse(JSON.stringify(token.state.runtime))
+        : null;
+
       if (token.type === 'D') {
         const compatible = getCompatibleDeterminantIndices(token);
         if (!compatible.length) return;
@@ -894,6 +864,16 @@
         const nextPos = ((currentPos + delta) % compatible.length + compatible.length) % compatible.length;
         token.index = compatible[nextPos];
         token.state = buildDefaultState(token.type, token.index);
+        if (preservedVerbRuntime) {
+          token.state.runtime = {
+            ...token.state.runtime,
+            ...preservedVerbRuntime,
+            neg: {
+              ...token.state.runtime.neg,
+              ...(preservedVerbRuntime.neg || {}),
+            },
+          };
+        }
         return;
       }
 
@@ -901,11 +881,25 @@
       if (!bank.length) return;
       token.index = ((token.index + delta) % bank.length + bank.length) % bank.length;
       token.state = buildDefaultState(token.type, token.index);
+      if (preservedVerbRuntime) {
+        token.state.runtime = {
+          ...token.state.runtime,
+          ...preservedVerbRuntime,
+          neg: {
+            ...token.state.runtime.neg,
+            ...(preservedVerbRuntime.neg || {}),
+          },
+        };
+      }
       ensureTokenIndex(token);
     }
 
     function randomizeTokenWord(token) {
       if (token.kind !== 'symbol') return;
+
+      const preservedVerbRuntime = token.type === 'V' && token.state?.runtime
+        ? JSON.parse(JSON.stringify(token.state.runtime))
+        : null;
 
       if (token.type === 'D') {
         const compatible = getCompatibleDeterminantIndices(token);
@@ -913,6 +907,16 @@
         const randomIdx = Math.floor(Math.random() * compatible.length);
         token.index = compatible[randomIdx];
         token.state = buildDefaultState(token.type, token.index);
+        if (preservedVerbRuntime) {
+          token.state.runtime = {
+            ...token.state.runtime,
+            ...preservedVerbRuntime,
+            neg: {
+              ...token.state.runtime.neg,
+              ...(preservedVerbRuntime.neg || {}),
+            },
+          };
+        }
         ensureTokenIndex(token);
         applyAllAgreements();
         renderLogic();
@@ -922,6 +926,16 @@
 
       token.index = randomIndex(token.type);
       token.state = buildDefaultState(token.type, token.index);
+      if (preservedVerbRuntime) {
+        token.state.runtime = {
+          ...token.state.runtime,
+          ...preservedVerbRuntime,
+          neg: {
+            ...token.state.runtime.neg,
+            ...(preservedVerbRuntime.neg || {}),
+          },
+        };
+      }
       ensureTokenIndex(token);
       applyAllAgreements();
       renderLogic();
@@ -1002,6 +1016,82 @@
           return;
         }
       });
+    }
+
+    function attachNegationInteractions(span, verbToken) {
+      let lastY = null;
+      let moved = false;
+
+      span.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        if (event.ctrlKey) return;
+        const direction = event.deltaY < 0 ? 1 : -1;
+        updateVerbNegation(verbToken, direction);
+        applyAllAgreements();
+        renderLogic();
+        renderPhrase();
+      });
+
+      span.addEventListener('pointerdown', (event) => {
+        span.setPointerCapture(event.pointerId);
+        lastY = event.clientY;
+        moved = false;
+      });
+
+      span.addEventListener('pointermove', (event) => {
+        if (lastY === null) return;
+        const deltaY = event.clientY - lastY;
+        const threshold = 10;
+        if (Math.abs(deltaY) >= threshold) {
+          const steps = Math.trunc(deltaY / threshold);
+          updateVerbNegation(verbToken, -steps);
+          applyAllAgreements();
+          renderLogic();
+          renderPhrase();
+          lastY = event.clientY;
+          moved = true;
+        }
+      });
+
+      span.addEventListener('pointerup', (event) => {
+        span.releasePointerCapture(event.pointerId);
+        if (!moved) {
+          updateVerbNegation(verbToken, 1);
+          applyAllAgreements();
+          renderLogic();
+          renderPhrase();
+        }
+        lastY = null;
+        moved = false;
+      });
+
+      span.addEventListener('pointercancel', () => {
+        lastY = null;
+        moved = false;
+      });
+    }
+
+    function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.symbol = token.type;
+      span.dataset.tokenId = String(token.id);
+
+      if (token.kind === 'symbol') {
+        const idx = ensureTokenIndex(token);
+        if (idx !== null && idx !== undefined) {
+          span.dataset.index = String(idx);
+        }
+      }
+
+      span.textContent = text ?? (realizeToken(token) || `[${token.type}]`);
+      applyDebugTooltip(span, token);
+
+      if (attachInteractions && token.kind === 'symbol') {
+        addInteractions(span, token);
+      }
+
+      return span;
     }
 
     function updateSpanFromToken(span, token) {
@@ -1160,13 +1250,12 @@
     // À l'avenir, les interactions suivantes mettront à jour V.state.runtime.neg :
     //
     // - Ctrl + clic sur un verbe : toggle neg.active true/false
-    // - Ctrl + scroll sur un verbe : change neg.type via updateVerbNegation(V, delta)
     // - Scroll sur un mot-projection de type "pas/jamais/..." déléguera vers updateVerbNegation
     //
     // Les mots "ne", "pas", "jamais", etc. seront des mots-système projetés
     // à partir de cet état, pas des briques manipulables.
 
-    function realizeVerbMock(token) {
+    function realizeVerbMock(token, { includeNeg = true } = {}) {
       const bank = banks[token.type] || [];
       const entry = bank[token.index] || {};
       const infinitive = entry.value || '';
@@ -1199,7 +1288,7 @@
         form = `[IMP] ${form}`;
       }
 
-      if (negState.active) {
+      if (negState.active && includeNeg) {
         const negType = negState.type || 'pas';
         form = `ne ${form} ${negType}`;
       }
@@ -1365,18 +1454,30 @@
           phraseContainer.appendChild(document.createTextNode(' '));
         }
 
-        if (token.kind === 'symbol') {
-          const span = document.createElement('span');
-          span.className = 'word';
-          span.dataset.symbol = token.type;
-          span.dataset.tokenId = String(token.id);
-          updateSpanFromToken(span, token);
-          addInteractions(span, token);
+        const negState = token.state?.runtime?.neg;
+
+        if (token.kind === 'symbol' && token.type === 'V' && negState?.active) {
+          const preSpan = createWordSpan(token, { text: 'ne', attachInteractions: false });
+          preSpan.dataset.negPart = 'pre';
+          phraseContainer.appendChild(preSpan);
+          phraseContainer.appendChild(document.createTextNode(' '));
+
+          const verbSpan = createWordSpan(token, { text: realizeVerbMock(token, { includeNeg: false }) });
+          verbSpan.dataset.negPart = 'verb-core';
+          phraseContainer.appendChild(verbSpan);
+          phraseContainer.appendChild(document.createTextNode(' '));
+
+          const negSpan = createWordSpan(token, { text: negState.type || 'pas', attachInteractions: false });
+          negSpan.dataset.negPart = 'post';
+          attachNegationInteractions(negSpan, token);
+          phraseContainer.appendChild(negSpan);
+        } else if (token.kind === 'symbol') {
+          const span = createWordSpan(token);
           phraseContainer.appendChild(span);
         } else {
-          const text = document.createElement('span');
-          text.textContent = token.value;
-          phraseContainer.appendChild(text);
+          const literalSpan = createWordSpan(token, { text: token.value, attachInteractions: false });
+          literalSpan.classList.add('literal-word');
+          phraseContainer.appendChild(literalSpan);
         }
       });
 
@@ -1471,14 +1572,14 @@
 
         brick.addEventListener('mouseenter', () => {
           const id = brick.dataset.id;
-          const word = document.querySelector(`.word[data-token-id="${id}"]`);
-          if (word) word.classList.add('link-hover');
+          const words = document.querySelectorAll(`.word[data-token-id="${id}"]`);
+          words.forEach((word) => word.classList.add('link-hover'));
         });
 
         brick.addEventListener('mouseleave', () => {
           const id = brick.dataset.id;
-          const word = document.querySelector(`.word[data-token-id="${id}"]`);
-          if (word) word.classList.remove('link-hover');
+          const words = document.querySelectorAll(`.word[data-token-id="${id}"]`);
+          words.forEach((word) => word.classList.remove('link-hover'));
         });
 
         const deleteBtn = document.createElement('button');
@@ -1499,16 +1600,16 @@
 
         brick.addEventListener('dragstart', (event) => {
           currentDrag = { type: 'token', id: token.id };
-          const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
-          if (word) word.classList.add('link-drag');
+          const words = document.querySelectorAll(`.word[data-token-id="${token.id}"]`);
+          words.forEach((word) => word.classList.add('link-drag'));
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('text/plain', 'token');
           brick.classList.add('dragging');
         });
 
         brick.addEventListener('dragend', () => {
-          const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
-          if (word) word.classList.remove('link-drag');
+          const words = document.querySelectorAll(`.word[data-token-id="${token.id}"]`);
+          words.forEach((word) => word.classList.remove('link-drag'));
           brick.classList.remove('dragging');
           clearMarker();
         });
@@ -1586,19 +1687,22 @@
         w.classList.remove('insertion-shadow');
       });
 
-      const findTargetWord = (idx) => {
-        let probe = idx;
-        while (probe < logicTokens.length) {
-          const targetToken = logicTokens[probe];
-          if (targetToken?.kind === 'symbol') {
-            return document.querySelector(`.word[data-token-id="${targetToken.id}"]`);
-          }
-          probe += 1;
-        }
-        return null;
+      const findWordForToken = (token) => {
+        if (!token) return null;
+        const coreVerb = document.querySelector(`.word[data-token-id="${token.id}"][data-neg-part="verb-core"]`);
+        if (coreVerb) return coreVerb;
+        return document.querySelector(`.word[data-token-id="${token.id}"]`);
       };
 
-      const targetWord = findTargetWord(index);
+      let targetWord = findWordForToken(logicTokens[index]);
+
+      if (!targetWord && logicTokens[index] && logicTokens[index].kind !== 'symbol') {
+        for (let probe = index + 1; probe < logicTokens.length; probe += 1) {
+          targetWord = findWordForToken(logicTokens[probe]);
+          if (targetWord) break;
+        }
+      }
+
       if (targetWord) {
         targetWord.classList.add('insertion-shadow');
       }
@@ -1673,11 +1777,11 @@
         const token = logicTokens[safeIndex];
         if (!token) return;
 
-        const word = document.querySelector(`.word[data-token-id="${token.id}"]`);
-        if (word) {
+        const words = document.querySelectorAll(`.word[data-token-id="${token.id}"]`);
+        words.forEach((word) => {
           word.classList.add('link-drag');
           setTimeout(() => word.classList.remove('link-drag'), 160);
-        }
+        });
       });
     });
 
