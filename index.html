@@ -257,7 +257,45 @@
       background: rgba(57,255,20,0.85);
       box-shadow: 0 0 6px var(--matrix-glow);
       opacity: 0.8;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.35s ease;
+    }
+
+    @keyframes wordPulse {
+      0% {
+        color: #777;
+      }
+      50% {
+        color: #fff;
+      }
+      100% {
+        color: #777;
+      }
+    }
+
+    .word.link-hover {
+      animation: wordPulse 1.6s ease-in-out infinite;
+      text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+    }
+
+    .word.link-drag {
+      animation: wordPulse 0.9s ease-in-out infinite;
+      font-weight: 600;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+    }
+
+    .word.insertion-shadow {
+      margin-left: 6px;
+      margin-right: 6px;
+    }
+
+    .natural-drop-marker {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      background: #000;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+      vertical-align: middle;
+      margin: 0 4px;
     }
 
     @keyframes wordPulse {
@@ -341,7 +379,7 @@
 
     .word {
       cursor: ns-resize;
-      transition: color 0.2s ease, background 0.2s ease, margin 0.25s cubic-bezier(0.22, 1.2, 0.36, 1);
+      transition: color 0.2s ease, background 0.2s ease, margin 0.5s cubic-bezier(0.22, 1.2, 0.36, 1);
       padding: 2px 4px;
       border-radius: 4px;
       white-space: pre;
@@ -1269,7 +1307,11 @@
       const rt = token.state?.runtime || {};
 
       if (token.type === 'N') {
-        if (rt.genre === 'f') label += 'ᶠ';
+        if (rt.genre === 'f') {
+          label += 'ᶠ';
+        } else {
+          label += 'ᵐ';
+        }
         if (rt.nombre === 'pl') label += 'ₚ';
       }
 
@@ -1354,6 +1396,78 @@
         brick.addEventListener('click', () => {
           activeTokenId = token.id;
         });
+
+        if (token.type === 'V' && token.kind === 'symbol') {
+          let startX = null;
+          let lastStep = 0;
+          let gestureKind = null;
+
+          const STEP = 14;
+
+          brick.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0) return;
+            startX = event.clientX;
+            lastStep = 0;
+            gestureKind = event.ctrlKey ? 'neg-type' : (event.shiftKey ? 'mode' : 'temps');
+            brick.setPointerCapture(event.pointerId);
+
+            if (event.ctrlKey && !event.shiftKey) {
+              // Track ctrl click for potential toggle if no move occurs.
+              gestureKind = 'neg-type';
+            }
+          });
+
+          const cycleValue = (order, current, delta) => {
+            const idx = order.indexOf(current);
+            const safeIdx = idx === -1 ? 0 : idx;
+            const next = ((safeIdx + delta) % order.length + order.length) % order.length;
+            return order[next];
+          };
+
+          brick.addEventListener('pointermove', (event) => {
+            if (startX === null) return;
+            const deltaX = event.clientX - startX;
+            const steps = Math.trunc(deltaX / STEP);
+            if (steps === lastStep) return;
+            const diff = steps - lastStep;
+            lastStep = steps;
+
+            const rt = token.state.runtime;
+            if (gestureKind === 'mode') {
+              const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
+              rt.mode = cycleValue(order, rt.mode, diff);
+            } else if (gestureKind === 'neg-type' && event.ctrlKey) {
+              updateVerbNegation(token, diff);
+            } else {
+              const order = ['present', 'passe', 'futur'];
+              rt.temps = cycleValue(order, rt.temps, diff);
+            }
+
+            applyAllAgreements();
+            renderLogic();
+            renderPhrase();
+          });
+
+          brick.addEventListener('pointerup', (event) => {
+            if (startX === null) return;
+            brick.releasePointerCapture(event.pointerId);
+            if (gestureKind === 'neg-type' && Math.abs(lastStep) === 0 && event.ctrlKey) {
+              token.state.runtime.neg.active = !token.state.runtime.neg.active;
+              applyAllAgreements();
+              renderLogic();
+              renderPhrase();
+            }
+            startX = null;
+            lastStep = 0;
+            gestureKind = null;
+          });
+
+          brick.addEventListener('pointercancel', () => {
+            startX = null;
+            lastStep = 0;
+            gestureKind = null;
+          });
+        }
 
         brick.addEventListener('mouseenter', () => {
           const id = brick.dataset.id;
@@ -1472,7 +1586,19 @@
         w.classList.remove('insertion-shadow');
       });
 
-      const targetWord = words[index];
+      const findTargetWord = (idx) => {
+        let probe = idx;
+        while (probe < logicTokens.length) {
+          const targetToken = logicTokens[probe];
+          if (targetToken?.kind === 'symbol') {
+            return document.querySelector(`.word[data-token-id="${targetToken.id}"]`);
+          }
+          probe += 1;
+        }
+        return null;
+      };
+
+      const targetWord = findTargetWord(index);
       if (targetWord) {
         targetWord.classList.add('insertion-shadow');
       }
@@ -1481,10 +1607,10 @@
       naturalMarker.className = 'natural-drop-marker';
       naturalMarker.id = 'natural-drop-marker';
 
-      if (index >= words.length) {
+      if (!targetWord) {
         phraseContainer.appendChild(naturalMarker);
       } else {
-        phraseContainer.insertBefore(naturalMarker, words[index]);
+        phraseContainer.insertBefore(naturalMarker, targetWord);
       }
     }
 
