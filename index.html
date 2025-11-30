@@ -432,6 +432,14 @@
       leur: { masc: { sg: "leur", pl: "leurs" }, fem: { sg: "leur", pl: "leurs" } },
     };
 
+    // MOCK DE CONJUGAISON VERBALE
+    // Ce module simule la conjugaison à partir de l’infinitif pour valider les états (personne, nombre, temps, mode, négation)
+    // avant intégration d’un vrai moteur morphologique.
+    const MOCK_PRESENT = {
+      sg: { 1: "e", 2: "es", 3: "e" },
+      pl: { 1: "ons", 2: "ez", 3: "ent" },
+    };
+
     const NEGATION_TYPES = [
       "pas",
       "jamais",
@@ -678,6 +686,7 @@
           runtime: {
             ...source,
             temps: 'present',
+            mode: 'indicatif',
             subjectId: null,
             neg: {
               active: false,
@@ -1070,8 +1079,52 @@
     // Les mots "ne", "pas", "jamais", etc. seront des mots-système projetés
     // à partir de cet état, pas des briques manipulables.
 
+    function realizeVerbMock(token) {
+      const bank = banks[token.type] || [];
+      const entry = bank[token.index] || {};
+      const infinitive = entry.value || '';
+      const runtime = token.state?.runtime || {};
+
+      const personne = runtime.personne ?? 3;
+      const nombre = runtime.nombre === 'pl' ? 'pl' : 'sg';
+      const temps = runtime.temps || 'present';
+      const mode = runtime.mode || 'indicatif';
+      const negState = runtime.neg || {};
+
+      const radical = (infinitive || '').replace(/(er|ir|re)$/i, '') || infinitive;
+
+      let form = infinitive;
+
+      if (temps === 'present') {
+        const ending = MOCK_PRESENT[nombre]?.[personne] || '';
+        form = `${radical}${ending}`;
+      } else if (temps === 'passe') {
+        form = `a ${radical}é`;
+      } else if (temps === 'futur') {
+        form = `${infinitive}a`;
+      }
+
+      if (mode === 'subjonctif') {
+        form = `[SUBJ] ${form}`;
+      } else if (mode === 'conditionnel') {
+        form = `[COND] ${form}`;
+      } else if (mode === 'imperatif') {
+        form = `[IMP] ${form}`;
+      }
+
+      if (negState.active) {
+        const negType = negState.type || 'pas';
+        form = `ne ${form} ${negType}`;
+      }
+
+      return form || infinitive;
+    }
+
     function realizeToken(token) {
       const bank = banks[token.type] || [];
+      if (token.type === 'V') {
+        return realizeVerbMock(token);
+      }
       if (['N', 'Adj', 'D', 'DetP', 'Quant'].includes(token.type)) {
         return realizeNominalMock(token, bank[token.index]?.value);
       }
