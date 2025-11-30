@@ -668,6 +668,7 @@
     let tokenIdCounter = 0;
     let currentDrag = null;
     let dropMarker = null;
+    let activeTokenId = null;
 
     const initialFormula = "D N V Adv , C D N Adj V !";
 
@@ -1242,6 +1243,55 @@
       span.title = tooltip;
     }
 
+    function getSymbolicLabel(token) {
+      let label = token.type;
+
+      const rt = token.state?.runtime || {};
+
+      if (token.type === 'N') {
+        if (rt.genre === 'f') label += 'ᶠ';
+        if (rt.nombre === 'pl') label += 'ₚ';
+      }
+
+      if (token.type === 'Adj') {
+        if (rt.genre === 'f') label += 'ᶠ';
+        if (rt.nombre === 'pl') label += 'ₚ';
+      }
+
+      if (['D', 'DetP', 'Quant'].includes(token.type)) {
+        if (rt.nombre === 'pl') label += 'ₚ';
+      }
+
+      if (token.type === 'V') {
+        const tempsMap = {
+          present: 'ᵖʳᵉ',
+          passe: 'ᵖᵃˢ',
+          futur: 'ᶠᵘᵗ',
+        };
+
+        const modeMap = {
+          indicatif: '',
+          subjonctif: 'ˢᵘᵇ',
+          conditionnel: 'ᶜᵒⁿᵈ',
+          imperatif: 'ᶦᵐᵖ',
+        };
+
+        if (rt.temps && tempsMap[rt.temps]) {
+          label += tempsMap[rt.temps];
+        }
+
+        if (rt.mode && modeMap[rt.mode]) {
+          label += modeMap[rt.mode];
+        }
+
+        if (rt.neg?.active) {
+          label = `¬${label}`;
+        }
+      }
+
+      return label;
+    }
+
     function renderPhrase() {
       phraseContainer.innerHTML = '';
 
@@ -1279,7 +1329,11 @@
         brick.className = `token ${token.kind === 'literal' ? 'literal' : 'symbol'}`;
         brick.draggable = true;
         brick.dataset.id = token.id;
-        brick.textContent = token.kind === 'symbol' ? token.type : token.value;
+        brick.textContent = token.kind === 'symbol' ? getSymbolicLabel(token) : token.value;
+
+        brick.addEventListener('click', () => {
+          activeTokenId = token.id;
+        });
 
         brick.addEventListener('mouseenter', () => {
           const id = brick.dataset.id;
@@ -1490,6 +1544,74 @@
       input.value = '';
       renderLogic();
       renderPhrase();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!activeTokenId) return;
+
+      const token = logicTokens.find((t) => t.id === activeTokenId);
+      if (!token || token.kind !== 'symbol') return;
+
+      const rt = token.state?.runtime;
+      if (!rt) return;
+
+      let changed = false;
+
+      if (token.type === 'V') {
+        if (event.key === 'T') {
+          const order = ['present', 'passe', 'futur'];
+          const i = order.indexOf(rt.temps);
+          rt.temps = order[(i + 1) % order.length];
+          changed = true;
+          event.preventDefault();
+        }
+
+        if (event.key === 'M') {
+          const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
+          const i = order.indexOf(rt.mode);
+          rt.mode = order[(i + 1) % order.length];
+          changed = true;
+          event.preventDefault();
+        }
+
+        if (event.key === 'n' && !event.shiftKey) {
+          rt.neg.active = !rt.neg.active;
+          changed = true;
+          event.preventDefault();
+        }
+
+        if (event.key === 'N' && event.shiftKey) {
+          updateVerbNegation(token, 1);
+          changed = true;
+          event.preventDefault();
+        }
+      }
+
+      if (token.type === 'N') {
+        if (event.key === 'P') {
+          rt.nombre = rt.nombre === 'sg' ? 'pl' : 'sg';
+          changed = true;
+          logicTokens.forEach((t) => {
+            if (t.type === 'D') ensureTokenIndex(t);
+          });
+          event.preventDefault();
+        }
+
+        if (event.key === 'G') {
+          rt.genre = rt.genre === 'f' ? 'm' : 'f';
+          changed = true;
+          logicTokens.forEach((t) => {
+            if (t.type === 'D') ensureTokenIndex(t);
+          });
+          event.preventDefault();
+        }
+      }
+
+      if (changed) {
+        applyAllAgreements();
+        renderLogic();
+        renderPhrase();
+      }
     });
 
     helpButton.addEventListener('click', () => {
