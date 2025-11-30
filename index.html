@@ -648,6 +648,7 @@
           runtime: {
             ...source,
             temps: 'present',
+            subjectId: null,
             neg: {
               active: false,
               type: 'pas',
@@ -890,7 +891,7 @@
       return /[.!?;]/.test(token.value);
     }
 
-    function applyVerbAgreement() {
+    function identifySubjectsAndAssignVerbs() {
       let currentSubject = null;
 
       for (let i = 0; i < logicTokens.length; i += 1) {
@@ -904,24 +905,35 @@
         if (token.type === 'Pro' || token.type === 'N') {
           ensureTokenIndex(token);
           currentSubject = token;
+          continue;
         }
 
         if (token.type === 'V') {
           ensureTokenIndex(token);
-          if (currentSubject) {
-            if (currentSubject.type === 'Pro') {
-              token.state.runtime.personne = currentSubject.state?.runtime?.personne ?? token.state.runtime.personne ?? 3;
-              token.state.runtime.nombre = currentSubject.state?.runtime?.nombre || token.state.runtime.nombre || 'sg';
-            } else if (currentSubject.type === 'N') {
-              token.state.runtime.personne = 3;
-              token.state.runtime.nombre = currentSubject.state?.runtime?.nombre || token.state.runtime.nombre || 'sg';
-            }
+          const runtime = token.state?.runtime;
+          if (!runtime) continue;
+
+          if (currentSubject?.type === 'Pro') {
+            ensureTokenIndex(currentSubject);
+            runtime.personne = currentSubject.state?.runtime?.personne ?? runtime.personne ?? 3;
+            runtime.nombre = currentSubject.state?.runtime?.nombre || runtime.nombre || 'sg';
+            runtime.subjectId = currentSubject.id;
+          } else if (currentSubject?.type === 'N') {
+            ensureTokenIndex(currentSubject);
+            runtime.personne = 3;
+            runtime.nombre = currentSubject.state?.runtime?.nombre || runtime.nombre || 'sg';
+            runtime.subjectId = currentSubject.id;
           } else {
-            token.state.runtime.personne = 3;
-            token.state.runtime.nombre = 'sg';
+            runtime.personne = 3;
+            runtime.nombre = 'sg';
+            runtime.subjectId = null;
           }
         }
       }
+    }
+
+    function applyVerbAgreement() {
+      identifySubjectsAndAssignVerbs();
     }
 
     function applyDeterminantAgreement() {
@@ -1006,7 +1018,8 @@
       let tooltip = token.type;
 
       if (token.type === 'V') {
-        tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${rt.temps || 'present'}`;
+        const subjectPart = rt.subjectId !== null && rt.subjectId !== undefined ? `token:${rt.subjectId}` : 'none';
+        tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${subjectPart}`;
       } else if (token.type === 'Pro') {
         tooltip += ` | ${rt.personne ?? '?'} | ${rt.nombre ?? '?'} | ${rt.genre ?? 'x'}`;
       } else if (token.type === 'Adj' || token.type === 'N' || token.type === 'D') {
