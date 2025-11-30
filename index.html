@@ -262,29 +262,30 @@
 
     @keyframes wordPulse {
       0% {
-        color: #555;
+        color: #777;
       }
       50% {
-        color: #000;
+        color: #fff;
       }
       100% {
-        color: #555;
+        color: #777;
       }
     }
 
     .word.link-hover {
       animation: wordPulse 1.6s ease-in-out infinite;
+      text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
     }
 
     .word.link-drag {
       animation: wordPulse 0.9s ease-in-out infinite;
       font-weight: 600;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
     }
 
     .word.insertion-shadow {
       margin-left: 12px;
       margin-right: 12px;
-      transition: margin 0.18s cubic-bezier(0.22, 1.2, 0.36, 1);
     }
 
     .natural-drop-marker {
@@ -340,7 +341,7 @@
 
     .word {
       cursor: ns-resize;
-      transition: color 0.2s ease, background 0.2s ease;
+      transition: color 0.2s ease, background 0.2s ease, margin 0.25s cubic-bezier(0.22, 1.2, 0.36, 1);
       padding: 2px 4px;
       border-radius: 4px;
       white-space: pre;
@@ -686,7 +687,7 @@
       const emptyState = { source: {}, runtime: {} };
 
       if (tokenType === 'N') {
-        const source = { genre: entry.genre || 'x', nombre: 'sg' };
+        const source = { genre: entry.genre || 'm', nombre: 'sg' };
         return {
           source,
           runtime: { ...source },
@@ -832,7 +833,11 @@
       }
 
       const hasState = token.state && token.state.source && token.state.runtime;
-      if (!hasState || token.index !== previousIndex) {
+      const entry = bank[token.index] || {};
+
+      if (token.type === 'N' && entry && entry.genre && token.state?.source?.genre !== entry.genre) {
+        token.state = buildDefaultState(token.type, token.index);
+      } else if (!hasState || token.index !== previousIndex) {
         token.state = buildDefaultState(token.type, token.index);
       }
 
@@ -872,6 +877,7 @@
         token.state = buildDefaultState(token.type, token.index);
         ensureTokenIndex(token);
         applyAllAgreements();
+        renderLogic();
         renderPhrase();
         return;
       }
@@ -880,6 +886,7 @@
       token.state = buildDefaultState(token.type, token.index);
       ensureTokenIndex(token);
       applyAllAgreements();
+      renderLogic();
       renderPhrase();
     }
 
@@ -893,6 +900,7 @@
         const direction = event.deltaY < 0 ? 1 : -1;
         adjustTokenIndex(token, direction);
         applyAllAgreements();
+        renderLogic();
         renderPhrase();
       });
 
@@ -911,6 +919,7 @@
           const steps = Math.trunc(deltaY / threshold);
           adjustTokenIndex(token, -steps);
           applyAllAgreements();
+          renderLogic();
           renderPhrase();
           lastY = event.clientY;
           moved = true;
@@ -927,6 +936,7 @@
         if (!moved && !skipTap) {
           adjustTokenIndex(token, 1);
           applyAllAgreements();
+          renderLogic();
           renderPhrase();
         }
         lastY = null;
@@ -949,6 +959,7 @@
             }
           });
           applyAllAgreements();
+          renderLogic();
           renderPhrase();
           return;
         }
@@ -1558,21 +1569,20 @@
     });
 
     document.addEventListener('keydown', (event) => {
+      const relevantKeys = ['t', 'T', 'm', 'M', 'n', 'N', 'p', 'P', 'g', 'G'];
+      if (!relevantKeys.includes(event.key)) return;
+
       if (!activeTokenId) return;
 
       const token = logicTokens.find(t => t.id === activeTokenId);
-      if (!token) return;
+      if (!token || !token.state || !token.state.runtime) return;
 
-      // Neutralise le navigateur
       event.preventDefault();
       event.stopPropagation();
 
-      const rt = token.state?.runtime;
-      if (!rt) return;
+      const rt = token.state.runtime;
 
-      // VERBES
       if (token.type === 'V') {
-
         if (event.key.toLowerCase() === 't') {
           const order = ['present', 'passe', 'futur'];
           const i = order.indexOf(rt.temps);
@@ -1594,9 +1604,7 @@
         }
       }
 
-      // NOMS
       if (token.type === 'N') {
-
         if (event.key.toLowerCase() === 'p') {
           rt.nombre = rt.nombre === 'sg' ? 'pl' : 'sg';
         }
@@ -1604,6 +1612,12 @@
         if (event.key.toLowerCase() === 'g') {
           rt.genre = rt.genre === 'f' ? 'm' : 'f';
         }
+
+        logicTokens.forEach((t) => {
+          if (t.type === 'D') {
+            ensureTokenIndex(t);
+          }
+        });
       }
 
       applyAllAgreements();
