@@ -403,6 +403,10 @@
     <div class="phrase"></div>
   </div>
 
+  <!-- Conjugaison française réelle (librairie french-verbs + dictionnaire lefff) -->
+  <script src="https://cdn.jsdelivr.net/npm/french-verbs@2.0.3/dist/french-verbs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/french-verbs-lefff@2.0.1/dist/french-verbs-lefff.min.js"></script>
+
   <script>
     const CSV_URLS = {
       N: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRWgq55k8FyTT11Hu4yPyRM-AMQBqLW0BKmdEW1JRyj5e1RVTndtPgnuYkosoxUpReqdzpNigV-4OdB/pub?gid=2135700293&single=true&output=csv",
@@ -1048,6 +1052,67 @@
         lastY = null;
         moved = false;
       });
+
+      span.addEventListener('pointerdown', (event) => {
+        span.setPointerCapture(event.pointerId);
+        lastY = event.clientY;
+        moved = false;
+      });
+
+      span.addEventListener('pointermove', (event) => {
+        if (lastY === null) return;
+        const deltaY = event.clientY - lastY;
+        const threshold = 10;
+        if (Math.abs(deltaY) >= threshold) {
+          const steps = Math.trunc(deltaY / threshold);
+          updateVerbNegation(verbToken, -steps);
+          applyAllAgreements();
+          renderLogic();
+          renderPhrase();
+          lastY = event.clientY;
+          moved = true;
+        }
+      });
+
+      span.addEventListener('pointerup', (event) => {
+        span.releasePointerCapture(event.pointerId);
+        if (!moved) {
+          updateVerbNegation(verbToken, 1);
+          applyAllAgreements();
+          renderLogic();
+          renderPhrase();
+        }
+        lastY = null;
+        moved = false;
+      });
+
+      span.addEventListener('pointercancel', () => {
+        lastY = null;
+        moved = false;
+      });
+    }
+
+    function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.symbol = token.type;
+      span.dataset.tokenId = String(token.id);
+
+      if (token.kind === 'symbol') {
+        const idx = ensureTokenIndex(token);
+        if (idx !== null && idx !== undefined) {
+          span.dataset.index = String(idx);
+        }
+      }
+
+      span.textContent = text ?? (realizeToken(token) || `[${token.type}]`);
+      applyDebugTooltip(span, token);
+
+      if (attachInteractions && token.kind === 'symbol') {
+        addInteractions(span, token);
+      }
+
+      return span;
     }
 
     function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
@@ -1234,37 +1299,118 @@
     // Les mots "ne", "pas", "jamais", etc. seront des mots-système projetés
     // à partir de cet état, pas des briques manipulables.
 
-    function realizeVerbMock(token, { includeNeg = true } = {}) {
+    function resolveConjugationLib() {
+      const globalCandidate = window.frenchVerbs || window.FrenchVerbs || window.french_verbs || window.frenchverbs;
+      if (!globalCandidate) return null;
+      if (typeof globalCandidate === 'function') return globalCandidate;
+      if (typeof globalCandidate?.getConjugation === 'function') return globalCandidate.getConjugation;
+      if (typeof globalCandidate?.conjugate === 'function') return globalCandidate.conjugate;
+      if (typeof globalCandidate?.default === 'function') return globalCandidate.default;
+      if (typeof globalCandidate?.default?.getConjugation === 'function') return globalCandidate.default.getConjugation;
+      return null;
+    }
+
+    function resolveVerbDictionary() {
+      const candidate = window.frenchVerbsLefff || window.FrenchVerbsLefff || window.french_verbs_lefff;
+      if (!candidate) return null;
+      if (candidate.verbs) return candidate.verbs;
+      if (candidate.default) return candidate.default;
+      return candidate;
+    }
+
+    function mapVerbTenseKey(runtime) {
+      const temps = runtime.temps || 'present';
+      const mode = runtime.mode || 'indicatif';
+
+      if (mode === 'indicatif') {
+        if (temps === 'passe') return 'PASSE_SIMPLE';
+        if (temps === 'futur') return 'FUTUR_SIMPLE';
+        return 'PRESENT';
+      }
+
+      if (mode === 'subjonctif') return 'SUBJONCTIF_PRESENT';
+      if (mode === 'conditionnel') return 'CONDITIONNEL_PRESENT';
+      if (mode === 'imperatif') return 'IMPERATIF_PRESENT';
+
+      return 'PRESENT';
+    }
+
+    function mapVerbPersonIndex(personne, nombre) {
+      const p = personne ?? 3;
+      const n = nombre === 'pl' ? 'pl' : 'sg';
+
+      if (n === 'pl') {
+        if (p === 1) return 3;
+        if (p === 2) return 4;
+        return 5;
+      }
+
+      if (p === 1) return 0;
+      if (p === 2) return 1;
+      return 2;
+    }
+
+    function realizeVerbWithLib(token, { includeNeg = true } = {}) {
       const bank = banks[token.type] || [];
       const entry = bank[token.index] || {};
       const infinitive = entry.value || '';
       const runtime = token.state?.runtime || {};
-
-      const personne = runtime.personne ?? 3;
-      const nombre = runtime.nombre === 'pl' ? 'pl' : 'sg';
-      const temps = runtime.temps || 'present';
-      const mode = runtime.mode || 'indicatif';
       const negState = runtime.neg || {};
 
-      const radical = (infinitive || '').replace(/(er|ir|re)$/i, '') || infinitive;
+      const fallback = () => {
+        const personne = runtime.personne ?? 3;
+        const nombre = runtime.nombre === 'pl' ? 'pl' : 'sg';
+        const temps = runtime.temps || 'present';
+        const mode = runtime.mode || 'indicatif';
+        const radical = (infinitive || '').replace(/(er|ir|re)$/i, '') || infinitive;
+
+        let form = infinitive;
+
+        if (temps === 'present') {
+          const ending = MOCK_PRESENT[nombre]?.[personne] || '';
+          form = `${radical}${ending}`;
+        } else if (temps === 'passe') {
+          form = `a ${radical}é`;
+        } else if (temps === 'futur') {
+          form = `${infinitive}a`;
+        }
+
+        if (mode === 'subjonctif') {
+          form = `[SUBJ] ${form}`;
+        } else if (mode === 'conditionnel') {
+          form = `[COND] ${form}`;
+        } else if (mode === 'imperatif') {
+          form = `[IMP] ${form}`;
+        }
+
+        return form || infinitive;
+      };
 
       let form = infinitive;
+      const conjugator = resolveConjugationLib();
+      const verbDict = resolveVerbDictionary();
 
-      if (temps === 'present') {
-        const ending = MOCK_PRESENT[nombre]?.[personne] || '';
-        form = `${radical}${ending}`;
-      } else if (temps === 'passe') {
-        form = `a ${radical}é`;
-      } else if (temps === 'futur') {
-        form = `${infinitive}a`;
-      }
+      if (conjugator && verbDict && infinitive) {
+        const personIndex = mapVerbPersonIndex(runtime.personne, runtime.nombre);
+        const tenseKey = mapVerbTenseKey(runtime);
 
-      if (mode === 'subjonctif') {
-        form = `[SUBJ] ${form}`;
-      } else if (mode === 'conditionnel') {
-        form = `[COND] ${form}`;
-      } else if (mode === 'imperatif') {
-        form = `[IMP] ${form}`;
+        try {
+          const result = conjugator(verbDict, infinitive, tenseKey, personIndex);
+          if (Array.isArray(result)) {
+            form = result[personIndex] || result[result.length - 1] || fallback();
+          } else if (typeof result === 'string') {
+            form = result;
+          } else if (result?.toString) {
+            form = result.toString();
+          } else {
+            form = fallback();
+          }
+        } catch (error) {
+          console.warn('[Phrasor] Conjugaison via french-verbs impossible, fallback mock utilisé.', error);
+          form = fallback();
+        }
+      } else {
+        form = fallback();
       }
 
       if (negState.active && includeNeg) {
@@ -1278,7 +1424,7 @@
     function realizeToken(token) {
       const bank = banks[token.type] || [];
       if (token.type === 'V') {
-        return realizeVerbMock(token);
+        return realizeVerbWithLib(token);
       }
       if (['N', 'Adj', 'D', 'DetP', 'Quant'].includes(token.type)) {
         return realizeNominalMock(token, bank[token.index]?.value);
@@ -1441,7 +1587,7 @@
           phraseContainer.appendChild(preSpan);
           phraseContainer.appendChild(document.createTextNode(' '));
 
-          const verbSpan = createWordSpan(token, { text: realizeVerbMock(token, { includeNeg: false }) });
+          const verbSpan = createWordSpan(token, { text: realizeVerbWithLib(token, { includeNeg: false }) });
           verbSpan.dataset.negPart = 'verb-core';
           phraseContainer.appendChild(verbSpan);
           phraseContainer.appendChild(document.createTextNode(' '));
