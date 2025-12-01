@@ -1077,6 +1077,29 @@
       return span;
     }
 
+    function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.symbol = token.type;
+      span.dataset.tokenId = String(token.id);
+
+      if (token.kind === 'symbol') {
+        const idx = ensureTokenIndex(token);
+        if (idx !== null && idx !== undefined) {
+          span.dataset.index = String(idx);
+        }
+      }
+
+      span.textContent = text ?? (realizeToken(token) || `[${token.type}]`);
+      applyDebugTooltip(span, token);
+
+      if (attachInteractions && token.kind === 'symbol') {
+        addInteractions(span, token);
+      }
+
+      return span;
+    }
+
     function updateSpanFromToken(span, token) {
       const bank = banks[token.type] || [];
       const idx = ensureTokenIndex(token);
@@ -1241,22 +1264,10 @@
     // à partir de cet état, pas des briques manipulables.
 
     function resolveConjugationLib() {
-      const globalCandidate = window.frenchVerbs || window.FrenchVerbs || window.french_verbs || window.frenchverbs;
-      if (!globalCandidate) return null;
-      if (typeof globalCandidate === 'function') return globalCandidate;
-      if (typeof globalCandidate?.getConjugation === 'function') return globalCandidate.getConjugation;
-      if (typeof globalCandidate?.conjugate === 'function') return globalCandidate.conjugate;
-      if (typeof globalCandidate?.default === 'function') return globalCandidate.default;
-      if (typeof globalCandidate?.default?.getConjugation === 'function') return globalCandidate.default.getConjugation;
+      if (window.frenchVerbs && typeof window.frenchVerbs.getConjugation === "function") {
+        return window.frenchVerbs.getConjugation;
+      }
       return null;
-    }
-
-    function resolveVerbDictionary() {
-      const candidate = window.frenchVerbsLefff || window.FrenchVerbsLefff || window.french_verbs_lefff;
-      if (!candidate) return null;
-      if (candidate.verbs) return candidate.verbs;
-      if (candidate.default) return candidate.default;
-      return candidate;
     }
 
     function mapVerbTenseKey(runtime) {
@@ -1329,14 +1340,13 @@
 
       let form = infinitive;
       const conjugator = resolveConjugationLib();
-      const verbDict = resolveVerbDictionary();
 
-      if (conjugator && verbDict && infinitive) {
+      if (conjugator && infinitive) {
         const personIndex = mapVerbPersonIndex(runtime.personne, runtime.nombre);
         const tenseKey = mapVerbTenseKey(runtime);
 
         try {
-          const table = conjugator(verbDict, infinitive, tenseKey);
+          const table = conjugator(infinitive, tenseKey);
 
           if (Array.isArray(table)) {
             form = table[personIndex] || fallback();
