@@ -1052,67 +1052,6 @@
         lastY = null;
         moved = false;
       });
-
-      span.addEventListener('pointerdown', (event) => {
-        span.setPointerCapture(event.pointerId);
-        lastY = event.clientY;
-        moved = false;
-      });
-
-      span.addEventListener('pointermove', (event) => {
-        if (lastY === null) return;
-        const deltaY = event.clientY - lastY;
-        const threshold = 10;
-        if (Math.abs(deltaY) >= threshold) {
-          const steps = Math.trunc(deltaY / threshold);
-          updateVerbNegation(verbToken, -steps);
-          applyAllAgreements();
-          renderLogic();
-          renderPhrase();
-          lastY = event.clientY;
-          moved = true;
-        }
-      });
-
-      span.addEventListener('pointerup', (event) => {
-        span.releasePointerCapture(event.pointerId);
-        if (!moved) {
-          updateVerbNegation(verbToken, 1);
-          applyAllAgreements();
-          renderLogic();
-          renderPhrase();
-        }
-        lastY = null;
-        moved = false;
-      });
-
-      span.addEventListener('pointercancel', () => {
-        lastY = null;
-        moved = false;
-      });
-    }
-
-    function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
-      const span = document.createElement('span');
-      span.className = 'word';
-      span.dataset.symbol = token.type;
-      span.dataset.tokenId = String(token.id);
-
-      if (token.kind === 'symbol') {
-        const idx = ensureTokenIndex(token);
-        if (idx !== null && idx !== undefined) {
-          span.dataset.index = String(idx);
-        }
-      }
-
-      span.textContent = text ?? (realizeToken(token) || `[${token.type}]`);
-      applyDebugTooltip(span, token);
-
-      if (attachInteractions && token.kind === 'symbol') {
-        addInteractions(span, token);
-      }
-
-      return span;
     }
 
     function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
@@ -1175,7 +1114,9 @@
 
           if (currentSubject?.type === 'Pro') {
             ensureTokenIndex(currentSubject);
-            runtime.personne = currentSubject.state?.runtime?.personne ?? runtime.personne ?? 3;
+            runtime.personne = Number(
+              currentSubject.state?.runtime?.personne ?? runtime.personne ?? 3,
+            );
             runtime.nombre = currentSubject.state?.runtime?.nombre || runtime.nombre || 'sg';
             runtime.subjectId = currentSubject.id;
           } else if (currentSubject?.type === 'N') {
@@ -1323,16 +1264,16 @@
       const mode = runtime.mode || 'indicatif';
 
       if (mode === 'indicatif') {
-        if (temps === 'passe') return 'PASSE_SIMPLE';
-        if (temps === 'futur') return 'FUTUR_SIMPLE';
-        return 'PRESENT';
+        if (temps === 'passe') return 'INDICATIF_PASSE_SIMPLE';
+        if (temps === 'futur') return 'INDICATIF_FUTUR_SIMPLE';
+        return 'INDICATIF_PRESENT';
       }
 
       if (mode === 'subjonctif') return 'SUBJONCTIF_PRESENT';
       if (mode === 'conditionnel') return 'CONDITIONNEL_PRESENT';
       if (mode === 'imperatif') return 'IMPERATIF_PRESENT';
 
-      return 'PRESENT';
+      return 'INDICATIF_PRESENT';
     }
 
     function mapVerbPersonIndex(personne, nombre) {
@@ -1395,13 +1336,10 @@
         const tenseKey = mapVerbTenseKey(runtime);
 
         try {
-          const result = conjugator(verbDict, infinitive, tenseKey, personIndex);
-          if (Array.isArray(result)) {
-            form = result[personIndex] || result[result.length - 1] || fallback();
-          } else if (typeof result === 'string') {
-            form = result;
-          } else if (result?.toString) {
-            form = result.toString();
+          const table = conjugator(verbDict, infinitive, tenseKey);
+
+          if (Array.isArray(table)) {
+            form = table[personIndex] || fallback();
           } else {
             form = fallback();
           }
