@@ -1077,6 +1077,29 @@
       return span;
     }
 
+    function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.symbol = token.type;
+      span.dataset.tokenId = String(token.id);
+
+      if (token.kind === 'symbol') {
+        const idx = ensureTokenIndex(token);
+        if (idx !== null && idx !== undefined) {
+          span.dataset.index = String(idx);
+        }
+      }
+
+      span.textContent = text ?? (realizeToken(token) || `[${token.type}]`);
+      applyDebugTooltip(span, token);
+
+      if (attachInteractions && token.kind === 'symbol') {
+        addInteractions(span, token);
+      }
+
+      return span;
+    }
+
     function updateSpanFromToken(span, token) {
       const bank = banks[token.type] || [];
       const idx = ensureTokenIndex(token);
@@ -1790,6 +1813,63 @@
       if (!token) return;
       logicTokens.push(token);
       input.value = '';
+      renderLogic();
+      renderPhrase();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const relevantKeys = ['t', 'T', 'm', 'M', 'n', 'N', 'p', 'P', 'g', 'G'];
+      if (!relevantKeys.includes(event.key)) return;
+
+      if (!activeTokenId) return;
+
+      const token = logicTokens.find(t => t.id === activeTokenId);
+      if (!token || !token.state || !token.state.runtime) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rt = token.state.runtime;
+
+      if (token.type === 'V') {
+        if (event.key.toLowerCase() === 't') {
+          const order = ['present', 'passe', 'futur'];
+          const i = order.indexOf(rt.temps);
+          rt.temps = order[(i + 1) % order.length];
+        }
+
+        if (event.key.toLowerCase() === 'm') {
+          const order = ['indicatif', 'subjonctif', 'conditionnel', 'imperatif'];
+          const i = order.indexOf(rt.mode);
+          rt.mode = order[(i + 1) % order.length];
+        }
+
+        if (event.key === 'n' && !event.shiftKey) {
+          rt.neg.active = !rt.neg.active;
+        }
+
+        if (event.key === 'N' && event.shiftKey) {
+          updateVerbNegation(token, 1);
+        }
+      }
+
+      if (token.type === 'N') {
+        if (event.key.toLowerCase() === 'p') {
+          rt.nombre = rt.nombre === 'sg' ? 'pl' : 'sg';
+        }
+
+        if (event.key.toLowerCase() === 'g') {
+          rt.genre = rt.genre === 'f' ? 'm' : 'f';
+        }
+
+        logicTokens.forEach((t) => {
+          if (t.type === 'D') {
+            ensureTokenIndex(t);
+          }
+        });
+      }
+
+      applyAllAgreements();
       renderLogic();
       renderPhrase();
     });
