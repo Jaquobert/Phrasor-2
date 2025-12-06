@@ -403,9 +403,8 @@
     <div class="phrase"></div>
   </div>
 
-  <!-- Conjugaison française réelle (librairie french-verbs + dictionnaire lefff) -->
+  <!-- Conjugaison française réelle (bundle french-verbs) -->
   <script src="https://cdn.jsdelivr.net/npm/french-verbs@2.0.3/dist/french-verbs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/french-verbs-lefff@2.0.1/dist/french-verbs-lefff.min.js"></script>
 
   <script>
     const CSV_URLS = {
@@ -1090,6 +1089,67 @@
         lastY = null;
         moved = false;
       });
+
+      span.addEventListener('pointerdown', (event) => {
+        span.setPointerCapture(event.pointerId);
+        lastY = event.clientY;
+        moved = false;
+      });
+
+      span.addEventListener('pointermove', (event) => {
+        if (lastY === null) return;
+        const deltaY = event.clientY - lastY;
+        const threshold = 10;
+        if (Math.abs(deltaY) >= threshold) {
+          const steps = Math.trunc(deltaY / threshold);
+          updateVerbNegation(verbToken, -steps);
+          applyAllAgreements();
+          renderLogic();
+          renderPhrase();
+          lastY = event.clientY;
+          moved = true;
+        }
+      });
+
+      span.addEventListener('pointerup', (event) => {
+        span.releasePointerCapture(event.pointerId);
+        if (!moved) {
+          updateVerbNegation(verbToken, 1);
+          applyAllAgreements();
+          renderLogic();
+          renderPhrase();
+        }
+        lastY = null;
+        moved = false;
+      });
+
+      span.addEventListener('pointercancel', () => {
+        lastY = null;
+        moved = false;
+      });
+    }
+
+    function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.symbol = token.type;
+      span.dataset.tokenId = String(token.id);
+
+      if (token.kind === 'symbol') {
+        const idx = ensureTokenIndex(token);
+        if (idx !== null && idx !== undefined) {
+          span.dataset.index = String(idx);
+        }
+      }
+
+      span.textContent = text ?? (realizeToken(token) || `[${token.type}]`);
+      applyDebugTooltip(span, token);
+
+      if (attachInteractions && token.kind === 'symbol') {
+        addInteractions(span, token);
+      }
+
+      return span;
     }
 
     function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
@@ -1338,20 +1398,14 @@
     }
 
     function mapVerbTenseKey(runtime) {
-      const temps = runtime.temps || 'present';
-      const mode = runtime.mode || 'indicatif';
+      if (runtime.mode === 'subjonctif') return 'subjonctif';
+      if (runtime.mode === 'conditionnel') return 'conditionnel';
+      if (runtime.mode === 'imperatif') return 'imperatif';
 
-      if (mode === 'indicatif') {
-        if (temps === 'passe') return 'INDICATIF_PASSE_SIMPLE';
-        if (temps === 'futur') return 'INDICATIF_FUTUR_SIMPLE';
-        return 'INDICATIF_PRESENT';
-      }
+      if (runtime.temps === 'futur') return 'futur';
+      if (runtime.temps === 'passe') return 'passe';
 
-      if (mode === 'subjonctif') return 'SUBJONCTIF_PRESENT';
-      if (mode === 'conditionnel') return 'CONDITIONNEL_PRESENT';
-      if (mode === 'imperatif') return 'IMPERATIF_PRESENT';
-
-      return 'INDICATIF_PRESENT';
+      return 'present';
     }
 
     function mapVerbPersonIndex(personne, nombre) {
@@ -1415,15 +1469,21 @@
         try {
           const table = conjugator(infinitive, tenseKey);
 
-          if (Array.isArray(table)) {
+          if (table && Array.isArray(table)) {
             form = table[personIndex] || fallback();
+          } else if (table && typeof table === "object") {
+            form = table[personIndex] || table[String(personIndex)] || fallback();
+          } else if (typeof table === "string") {
+            form = table;
           } else {
             form = fallback();
           }
+
         } catch (error) {
           console.warn('[Phrasor] Conjugaison via french-verbs impossible, fallback mock utilisé.', error);
           form = fallback();
         }
+
       } else {
         form = fallback();
       }
