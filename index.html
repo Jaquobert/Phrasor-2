@@ -569,6 +569,19 @@
     const symbolKeys = [...categoryCodes];
     const punctuationStickLeft = /^[,.;:!?]/;
 
+    let VERB_DICT = null;
+
+    fetch('/data/conjugations.json')
+      .then((res) => res.json())
+      .then((json) => {
+        VERB_DICT = json;
+        console.log('[PHRASOR] Lefff chargé ✅', Object.keys(json || {}).length);
+        renderPhrase();
+      })
+      .catch((err) => {
+        console.error('[PHRASOR] Erreur chargement Lefff ❌', err);
+      });
+
     function cloneBanks(source) {
       return JSON.parse(JSON.stringify(source));
     }
@@ -1051,82 +1064,29 @@
         lastY = null;
         moved = false;
       });
+    }
 
-      span.addEventListener('pointerdown', (event) => {
-        span.setPointerCapture(event.pointerId);
-        lastY = event.clientY;
-        moved = false;
-      });
+    function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.symbol = token.type;
+      span.dataset.tokenId = String(token.id);
 
-      span.addEventListener('pointermove', (event) => {
-        if (lastY === null) return;
-        const deltaY = event.clientY - lastY;
-        const threshold = 10;
-        if (Math.abs(deltaY) >= threshold) {
-          const steps = Math.trunc(deltaY / threshold);
-          updateVerbNegation(verbToken, -steps);
-          applyAllAgreements();
-          renderLogic();
-          renderPhrase();
-          lastY = event.clientY;
-          moved = true;
+      if (token.kind === 'symbol') {
+        const idx = ensureTokenIndex(token);
+        if (idx !== null && idx !== undefined) {
+          span.dataset.index = String(idx);
         }
-      });
+      }
 
-      span.addEventListener('pointerup', (event) => {
-        span.releasePointerCapture(event.pointerId);
-        if (!moved) {
-          updateVerbNegation(verbToken, 1);
-          applyAllAgreements();
-          renderLogic();
-          renderPhrase();
-        }
-        lastY = null;
-        moved = false;
-      });
+      span.textContent = text ?? (realizeToken(token) || `[${token.type}]`);
+      applyDebugTooltip(span, token);
 
-      span.addEventListener('pointercancel', () => {
-        lastY = null;
-        moved = false;
-      });
+      if (attachInteractions && token.kind === 'symbol') {
+        addInteractions(span, token);
+      }
 
-      span.addEventListener('pointerdown', (event) => {
-        span.setPointerCapture(event.pointerId);
-        lastY = event.clientY;
-        moved = false;
-      });
-
-      span.addEventListener('pointermove', (event) => {
-        if (lastY === null) return;
-        const deltaY = event.clientY - lastY;
-        const threshold = 10;
-        if (Math.abs(deltaY) >= threshold) {
-          const steps = Math.trunc(deltaY / threshold);
-          updateVerbNegation(verbToken, -steps);
-          applyAllAgreements();
-          renderLogic();
-          renderPhrase();
-          lastY = event.clientY;
-          moved = true;
-        }
-      });
-
-      span.addEventListener('pointerup', (event) => {
-        span.releasePointerCapture(event.pointerId);
-        if (!moved) {
-          updateVerbNegation(verbToken, 1);
-          applyAllAgreements();
-          renderLogic();
-          renderPhrase();
-        }
-        lastY = null;
-        moved = false;
-      });
-
-      span.addEventListener('pointercancel', () => {
-        lastY = null;
-        moved = false;
-      });
+      return span;
     }
 
     function createWordSpan(token, { text = null, attachInteractions = true } = {}) {
@@ -1385,27 +1345,25 @@
     // à partir de cet état, pas des briques manipulables.
 
     function resolveConjugationLib() {
-      if (window.FrenchVerbs && typeof window.FrenchVerbs.conjugate === "function") {
-        return window.FrenchVerbs.conjugate;
+      if (window.FrenchVerbs && typeof window.FrenchVerbs.getConjugation === "function") {
+        return window.FrenchVerbs.getConjugation;
       }
-
-      if (window.frenchVerbs && typeof window.frenchVerbs.conjugate === "function") {
-        return window.frenchVerbs.conjugate;
-      }
-
-      console.warn("[Phrasor] french-verbs NOT FOUND in window");
+      console.warn("[Phrasor] french-verbs getConjugation introuvable");
       return null;
     }
 
     function mapVerbTenseKey(runtime) {
-      if (runtime.mode === 'subjonctif') return 'subjonctif';
-      if (runtime.mode === 'conditionnel') return 'conditionnel';
-      if (runtime.mode === 'imperatif') return 'imperatif';
+      const temps = runtime.temps || 'present';
+      const mode = runtime.mode || 'indicatif';
 
-      if (runtime.temps === 'futur') return 'futur';
-      if (runtime.temps === 'passe') return 'passe';
+      if (mode === 'subjonctif') return 'SUBJONCTIF_PRESENT';
+      if (mode === 'conditionnel') return 'CONDITIONNEL_PRESENT';
+      if (mode === 'imperatif') return 'IMPERATIF_PRESENT';
 
-      return 'present';
+      if (temps === 'passe') return 'PASSE_SIMPLE';
+      if (temps === 'futur') return 'FUTUR';
+
+      return 'PRESENT';
     }
 
     function mapVerbPersonIndex(personne, nombre) {
@@ -1459,41 +1417,39 @@
         return form || infinitive;
       };
 
-      let form = infinitive;
       const conjugator = resolveConjugationLib();
 
-      if (conjugator && infinitive) {
-        const personIndex = mapVerbPersonIndex(runtime.personne, runtime.nombre);
-        const tenseKey = mapVerbTenseKey(runtime);
+      if (conjugator && VERB_DICT && infinitive) {
+        const personIndex = mapVerbPersonIndex(Number(runtime.personne || 3), runtime.nombre || 'sg');
+        const tenseKey = (mapVerbTenseKey(runtime) || '').toUpperCase();
 
         try {
-          const table = conjugator(infinitive, tenseKey);
+          const form = conjugator(VERB_DICT, infinitive, tenseKey, personIndex);
 
-          if (table && Array.isArray(table)) {
-            form = table[personIndex] || fallback();
-          } else if (table && typeof table === "object") {
-            form = table[personIndex] || table[String(personIndex)] || fallback();
-          } else if (typeof table === "string") {
-            form = table;
-          } else {
-            form = fallback();
+          if (typeof form === 'string' && form.length) {
+            if (negState.active && includeNeg) {
+              return `ne ${form} ${negState.type || 'pas'}`;
+            }
+            return form;
           }
-
+          return negState.active && includeNeg
+            ? `ne ${fallback()} ${negState.type || 'pas'}`
+            : fallback();
         } catch (error) {
           console.warn('[Phrasor] Conjugaison via french-verbs impossible, fallback mock utilisé.', error);
-          form = fallback();
+          const fallbackForm = fallback();
+          if (negState.active && includeNeg) {
+            return `ne ${fallbackForm} ${negState.type || 'pas'}`;
+          }
+          return fallbackForm;
         }
-
-      } else {
-        form = fallback();
       }
 
+      const fallbackForm = fallback();
       if (negState.active && includeNeg) {
-        const negType = negState.type || 'pas';
-        form = `ne ${form} ${negType}`;
+        return `ne ${fallbackForm} ${negState.type || 'pas'}`;
       }
-
-      return form || infinitive;
+      return fallbackForm || infinitive;
     }
 
     function realizeToken(token) {
