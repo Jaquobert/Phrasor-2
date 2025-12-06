@@ -1,0 +1,50 @@
+{
+  "brûler": {
+    "PRESENT": ["brûle", "brûles", "brûle", "brûlons", "brûlez", "brûlent"],
+    "FUTUR": ["brûlerai", "brûleras", "brûlera", "brûlerons", "brûlerez", "brûleront"],
+    "PASSE_SIMPLE": ["brûlai", "brûlas", "brûla", "brûlâmes", "brûlâtes", "brûlèrent"],
+    "SUBJONCTIF_PRESENT": ["brûle", "brûles", "brûle", "brûlions", "brûliez", "brûlent"],
+    "CONDITIONNEL_PRESENT": ["brûlerais", "brûlerais", "brûlerait", "brûlerions", "brûleriez", "brûleraient"],
+    "IMPERATIF_PRESENT": ["", "brûle", "brûle", "brûlons", "brûlez", "brûlent"]
+  },
+  "traverser": {
+    "PRESENT": ["traverse", "traverses", "traverse", "traversons", "traversez", "traversent"],
+    "FUTUR": ["traverserai", "traverseras", "traversera", "traverserons", "traverserez", "traverseront"],
+    "PASSE_SIMPLE": ["traversai", "traversas", "traversa", "traversâmes", "traversâtes", "traversèrent"],
+    "SUBJONCTIF_PRESENT": ["traverse", "traverses", "traverse", "traversions", "traversiez", "traversent"],
+    "CONDITIONNEL_PRESENT": ["traverserais", "traverserais", "traverserait", "traverserions", "traverseriez", "traverseraient"],
+    "IMPERATIF_PRESENT": ["", "traverse", "traverse", "traversons", "traversez", "traversent"]
+  },
+  "éclairer": {
+    "PRESENT": ["éclaire", "éclaires", "éclaire", "éclairons", "éclairez", "éclairent"],
+    "FUTUR": ["éclairerai", "éclaireras", "éclairera", "éclairerons", "éclairerez", "éclaireront"],
+    "PASSE_SIMPLE": ["éclairai", "éclairas", "éclaira", "éclairâmes", "éclairâtes", "éclairèrent"],
+    "SUBJONCTIF_PRESENT": ["éclaire", "éclaires", "éclaire", "éclairions", "éclairiez", "éclairent"],
+    "CONDITIONNEL_PRESENT": ["éclairerais", "éclairerais", "éclairerait", "éclairerions", "éclaireriez", "éclaireraient"],
+    "IMPERATIF_PRESENT": ["", "éclaire", "éclaire", "éclairons", "éclairez", "éclairent"]
+  },
+  "observer": {
+    "PRESENT": ["observe", "observes", "observe", "observons", "observez", "observent"],
+    "FUTUR": ["observerai", "observeras", "observera", "observerons", "observerez", "observeront"],
+    "PASSE_SIMPLE": ["observai", "observas", "observa", "observâmes", "observâtes", "observèrent"],
+    "SUBJONCTIF_PRESENT": ["observe", "observes", "observe", "observions", "observiez", "observent"],
+    "CONDITIONNEL_PRESENT": ["observerais", "observerais", "observerait", "observerions", "observeriez", "observeraient"],
+    "IMPERATIF_PRESENT": ["", "observe", "observe", "observons", "observez", "observent"]
+  },
+  "persister": {
+    "PRESENT": ["persiste", "persistes", "persiste", "persistons", "persistez", "persistent"],
+    "FUTUR": ["persisterai", "persisteras", "persistera", "persisterons", "persisterez", "persisteront"],
+    "PASSE_SIMPLE": ["persistai", "persistas", "persista", "persistâmes", "persistâtes", "persistèrent"],
+    "SUBJONCTIF_PRESENT": ["persiste", "persistes", "persiste", "persistions", "persistiez", "persistent"],
+    "CONDITIONNEL_PRESENT": ["persisterais", "persisterais", "persisterait", "persisterions", "persisteriez", "persisteraient"],
+    "IMPERATIF_PRESENT": ["", "persiste", "persiste", "persistons", "persistez", "persistent"]
+  },
+  "glisser": {
+    "PRESENT": ["glisse", "glisses", "glisse", "glissons", "glissez", "glissent"],
+    "FUTUR": ["glisserai", "glisseras", "glissera", "glisserons", "glisserez", "glisseront"],
+    "PASSE_SIMPLE": ["glissai", "glissas", "glissa", "glissâmes", "glissâtes", "glissèrent"],
+    "SUBJONCTIF_PRESENT": ["glisse", "glisses", "glisse", "glissions", "glissiez", "glissent"],
+    "CONDITIONNEL_PRESENT": ["glisserais", "glisserais", "glisserait", "glisserions", "glisseriez", "glisseraient"],
+    "IMPERATIF_PRESENT": ["", "glisse", "glisse", "glissons", "glissez", "glissent"]
+  }
+}
