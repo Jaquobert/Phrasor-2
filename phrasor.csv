@@ -1,0 +1,11 @@
+id,mot,liste,type,actif,commentaire
+1,logostrobien,1,nom,TRUE,Concept central
+2,décorum,1,nom,TRUE,Cadre visuel
+3,flux,1,nom,TRUE,Mouvement continu
+4,signal,1,nom,TRUE,Transmission / info
+5,rupture,1,nom,TRUE,Coupure nette
+6,matrice,1,nom,TRUE,Système sous-jacent
+7,vertige,1,nom,TRUE,Perte de repères
+8,miroir,1,nom,TRUE,Reflet / conscience
+9,oracle,1,nom,TRUE,Voix prophétique
+10,archipel,1,nom,TRUE,Ensemble fragmenté
